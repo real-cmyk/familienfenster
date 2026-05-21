@@ -18,7 +18,7 @@ export default async function FamilieLayout({ children }: { children: React.Reac
           Familienfenster
         </Link>
         <nav className="flex gap-4 items-center flex-wrap">
-          <Link href="/familie/besuche/neu" className="text-base" style={{ color: "var(--farbe-warm-text)" }}>
+          <Link href="/familie/besuche" className="text-base" style={{ color: "var(--farbe-warm-text)" }}>
             Besuche
           </Link>
           <Link href="/familie/fotos" className="text-base" style={{ color: "var(--farbe-warm-text)" }}>
