@@ -6,17 +6,9 @@ import Link from "next/link";
 import { aktiviereWakeLock, aktiviereKioskMode } from "@/lib/kiosk";
 import HeartbeatSender from "@/components/tablet/HeartbeatSender";
 
-const NAV_EINTRAEGE = [
-  { href: "/tablet", icon: "🏠", label: "Start" },
-  { href: "/tablet/kalender", icon: "📅", label: "Kalender" },
-  { href: "/tablet/fotos", icon: "🖼️", label: "Fotos" },
-  { href: "/tablet/musik", icon: "🎵", label: "Musik" },
-  { href: "/tablet/besuche", icon: "👨‍👩‍👧", label: "Familie" },
-  { href: "/tablet/avatar", icon: "💬", label: "Lina" },
-];
-
 export default function TabletLayout({ children }: { children: React.ReactNode }) {
   const pfad = usePathname();
+  const istHomescreen = pfad === "/tablet";
 
   useEffect(() => {
     aktiviereWakeLock();
@@ -30,42 +22,30 @@ export default function TabletLayout({ children }: { children: React.ReactNode }
     >
       <HeartbeatSender />
 
+      {/* Home-Button — erscheint auf allen Unterseiten */}
+      {!istHomescreen && (
+        <div className="shrink-0 px-4 pt-4 pb-1">
+          <Link
+            href="/tablet"
+            className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 font-semibold transition-transform active:scale-95"
+            style={{
+              background: "var(--farbe-hell-karte)",
+              border: "2px solid var(--farbe-warm-akzent-hell)",
+              color: "var(--farbe-warm-akzent)",
+              minHeight: "52px",
+              fontSize: "1.1rem",
+            }}
+          >
+            <span aria-hidden="true">🏠</span>
+            <span>Startseite</span>
+          </Link>
+        </div>
+      )}
+
       {/* Hauptinhalt */}
       <main className="flex-1 overflow-y-auto">
         {children}
       </main>
-
-      {/* Untere Navigation */}
-      <nav
-        className="flex border-t shrink-0"
-        style={{
-          borderColor: "var(--farbe-warm-akzent-hell)",
-          background: "var(--farbe-hell-karte)",
-        }}
-      >
-        {NAV_EINTRAEGE.map(({ href, icon, label }) => {
-          const aktiv = pfad === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              className="flex flex-col items-center justify-center flex-1 gap-1 transition-colors"
-              style={{
-                minHeight: "88px",
-                paddingTop: "12px",
-                paddingBottom: "12px",
-                color: aktiv ? "var(--farbe-warm-akzent)" : "var(--farbe-warm-text-weich)",
-                background: aktiv ? "var(--farbe-warm-akzent-hell)" : "transparent",
-                fontWeight: aktiv ? "700" : "400",
-                borderTop: aktiv ? "3px solid var(--farbe-warm-akzent)" : "3px solid transparent",
-              }}
-            >
-              <span className="text-3xl" aria-hidden="true">{icon}</span>
-              <span className="text-base">{label}</span>
-            </Link>
-          );
-        })}
-      </nav>
     </div>
   );
 }
