@@ -48,16 +48,19 @@ export default function TabletLayout({ children }: { children: React.ReactNode }
             <Link
               key={href}
               href={href}
-              className="flex flex-col items-center justify-center flex-1 py-3 gap-1 transition-colors"
+              className="flex flex-col items-center justify-center flex-1 gap-1 transition-colors"
               style={{
-                minHeight: "80px",
+                minHeight: "88px",
+                paddingTop: "12px",
+                paddingBottom: "12px",
                 color: aktiv ? "var(--farbe-warm-akzent)" : "var(--farbe-warm-text-weich)",
-                background: aktiv ? "var(--farbe-warm-bg2)" : "transparent",
+                background: aktiv ? "var(--farbe-warm-akzent-hell)" : "transparent",
                 fontWeight: aktiv ? "700" : "400",
+                borderTop: aktiv ? "3px solid var(--farbe-warm-akzent)" : "3px solid transparent",
               }}
             >
-              <span className="text-2xl" aria-hidden="true">{icon}</span>
-              <span className="text-sm">{label}</span>
+              <span className="text-3xl" aria-hidden="true">{icon}</span>
+              <span className="text-base">{label}</span>
             </Link>
           );
         })}
