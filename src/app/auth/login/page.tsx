@@ -33,6 +33,8 @@ export default function LoginSeite() {
 
     if (person?.rolle === "admin") {
       router.push("/admin");
+    } else if (person?.rolle === "oma") {
+      router.push("/tablet");
     } else {
       router.push("/familie");
     }
