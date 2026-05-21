@@ -9,6 +9,7 @@ export default function PersonenVerwaltung() {
   const [personen, setPersonen] = useState<Person[]>([]);
   const [neuerName, setNeuerName] = useState("");
   const [neueEmail, setNeueEmail] = useState("");
+  const [neuesPasswort, setNeuesPasswort] = useState("");
   const [neueRolle, setNeueRolle] = useState<"familie" | "admin">("familie");
   const [laedt, setLaedt] = useState(false);
   const [fehler, setFehler] = useState("");
@@ -28,7 +29,7 @@ export default function PersonenVerwaltung() {
     const res = await fetch("/api/admin/personen", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: neuerName, email: neueEmail, rolle: neueRolle }),
+      body: JSON.stringify({ name: neuerName, email: neueEmail, rolle: neueRolle, passwort: neuesPasswort }),
     });
 
     if (!res.ok) {
@@ -42,6 +43,7 @@ export default function PersonenVerwaltung() {
     setPersonen((prev) => [...prev, person]);
     setNeuerName("");
     setNeueEmail("");
+    setNeuesPasswort("");
     setLaedt(false);
   }
 
@@ -98,9 +100,9 @@ export default function PersonenVerwaltung() {
         ))}
       </div>
 
-      {/* Neue Person einladen */}
+      {/* Neue Person anlegen */}
       <h2 className="text-xl font-bold mb-4" style={{ color: "var(--farbe-warm-text)" }}>
-        Neue Person einladen
+        Neue Person anlegen
       </h2>
       <form onSubmit={handleEinladen} className="flex flex-col gap-4">
         <input
@@ -118,6 +120,16 @@ export default function PersonenVerwaltung() {
           onChange={(e) => setNeueEmail(e.target.value)}
           placeholder="E-Mail-Adresse"
           required
+          className="rounded-2xl border-2 px-5 py-4 text-lg w-full outline-none"
+          style={{ borderColor: "var(--farbe-warm-akzent-hell)", background: "var(--farbe-hell-karte)" }}
+        />
+        <input
+          type="text"
+          value={neuesPasswort}
+          onChange={(e) => setNeuesPasswort(e.target.value)}
+          placeholder="Passwort festlegen"
+          required
+          minLength={6}
           className="rounded-2xl border-2 px-5 py-4 text-lg w-full outline-none"
           style={{ borderColor: "var(--farbe-warm-akzent-hell)", background: "var(--farbe-hell-karte)" }}
         />
@@ -139,7 +151,7 @@ export default function PersonenVerwaltung() {
           className="rounded-2xl py-4 text-lg font-bold text-white disabled:opacity-60"
           style={{ background: "var(--farbe-warm-akzent)", minHeight: "64px" }}
         >
-          {laedt ? "Wird eingeladen…" : "Einladen — Magic Link senden"}
+          {laedt ? "Wird angelegt…" : "Person anlegen"}
         </button>
       </form>
     </div>

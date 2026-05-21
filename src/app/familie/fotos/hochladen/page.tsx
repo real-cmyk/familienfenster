@@ -53,7 +53,7 @@ export default function FotoHochladenSeite() {
       hochgeladen_von: person.id,
       storage_key: dateiname,
       beschriftung: beschriftung || null,
-      status: "ausstehend",
+      // status: default 'genehmigt' — sofort sichtbar auf dem Tablet
     });
 
     if (dbError) {
@@ -62,7 +62,7 @@ export default function FotoHochladenSeite() {
       return;
     }
 
-    router.push("/familie");
+    router.push("/familie/fotos");
   }
 
   return (
@@ -120,7 +120,7 @@ export default function FotoHochladenSeite() {
         </div>
 
         <p className="text-sm" style={{ color: "var(--farbe-warm-text-weich)" }}>
-          Das Foto wird nach dem Hochladen kurz geprüft, bevor es auf dem Tablet erscheint.
+          Das Foto erscheint sofort auf dem Tablet — du kannst es jederzeit wieder löschen.
         </p>
 
         {fehler && <p className="text-red-600">{fehler}</p>}

@@ -6,45 +6,36 @@ import { useRouter } from "next/navigation";
 
 export default function LoginSeite() {
   const [email, setEmail] = useState("");
-  const [gesendet, setGesendet] = useState(false);
+  const [passwort, setPasswort] = useState("");
   const [fehler, setFehler] = useState("");
   const [laedt, setLaedt] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
-  async function handleMagicLink(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLaedt(true);
     setFehler("");
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password: passwort });
 
     if (error) {
-      setFehler("Anmeldung fehlgeschlagen. Bitte E-Mail-Adresse prüfen.");
+      setFehler("E-Mail oder Passwort ist falsch.");
       setLaedt(false);
       return;
     }
-    setGesendet(true);
-    setLaedt(false);
-  }
 
-  if (gesendet) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-8" style={{ background: "var(--farbe-warm-bg)" }}>
-        <div className="max-w-md w-full text-center">
-          <div className="text-6xl mb-6">✉️</div>
-          <h1 className="text-2xl font-semibold mb-4" style={{ color: "var(--farbe-warm-text)" }}>
-            Wir haben dir einen Link geschickt
-          </h1>
-          <p style={{ color: "var(--farbe-warm-text-weich)" }}>
-            Schau in dein Postfach bei <strong>{email}</strong> und klicke auf den Link, um dich anzumelden.
-          </p>
-        </div>
-      </div>
-    );
+    // Rolle prüfen und weiterleiten
+    const { data: person } = await supabase
+      .from("personen")
+      .select("rolle")
+      .single();
+
+    if (person?.rolle === "admin") {
+      router.push("/admin");
+    } else {
+      router.push("/familie");
+    }
   }
 
   return (
@@ -57,9 +48,9 @@ export default function LoginSeite() {
           Familienmitglieder & Admin-Zugang
         </p>
 
-        <form onSubmit={handleMagicLink} className="flex flex-col gap-4">
+        <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <label className="font-medium" style={{ color: "var(--farbe-warm-text)" }}>
-            Deine E-Mail-Adresse
+            E-Mail-Adresse
           </label>
           <input
             type="email"
@@ -67,22 +58,31 @@ export default function LoginSeite() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@beispiel.de"
             required
+            autoComplete="email"
             className="rounded-2xl border-2 px-5 py-4 text-xl w-full outline-none focus:border-[var(--farbe-warm-akzent)]"
-            style={{
-              borderColor: "var(--farbe-warm-akzent-hell)",
-              background: "var(--farbe-hell-karte)",
-            }}
+            style={{ borderColor: "var(--farbe-warm-akzent-hell)", background: "var(--farbe-hell-karte)" }}
           />
-          {fehler && (
-            <p className="text-red-600 text-sm">{fehler}</p>
-          )}
+          <label className="font-medium" style={{ color: "var(--farbe-warm-text)" }}>
+            Passwort
+          </label>
+          <input
+            type="password"
+            value={passwort}
+            onChange={(e) => setPasswort(e.target.value)}
+            placeholder="••••••••"
+            required
+            autoComplete="current-password"
+            className="rounded-2xl border-2 px-5 py-4 text-xl w-full outline-none focus:border-[var(--farbe-warm-akzent)]"
+            style={{ borderColor: "var(--farbe-warm-akzent-hell)", background: "var(--farbe-hell-karte)" }}
+          />
+          {fehler && <p className="text-red-600 text-sm">{fehler}</p>}
           <button
             type="submit"
             disabled={laedt}
             className="rounded-2xl py-4 text-xl font-semibold text-white transition-opacity disabled:opacity-60"
             style={{ background: "var(--farbe-warm-akzent)", minHeight: "64px" }}
           >
-            {laedt ? "Wird gesendet…" : "Anmelde-Link senden"}
+            {laedt ? "Anmelden…" : "Anmelden"}
           </button>
         </form>
 

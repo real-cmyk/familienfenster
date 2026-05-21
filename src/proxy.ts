@@ -30,11 +30,11 @@ export async function proxy(request: NextRequest) {
 
   const pfad = request.nextUrl.pathname;
 
-  // Tablet-Route (/tablet/*) ist öffentlich — Oma hat keinen Login
-  const isTabletRoute = pfad.startsWith("/tablet");
+  // Nur /auth/* ist öffentlich — alle anderen Routen (inkl. /tablet) erfordern Login
+  // Oma meldet sich einmalig an; die Session bleibt im Browser gespeichert
   const isAuthRoute = pfad.startsWith("/auth/");
 
-  if (!hatSession && !isTabletRoute && !isAuthRoute) {
+  if (!hatSession && !isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     return NextResponse.redirect(url);

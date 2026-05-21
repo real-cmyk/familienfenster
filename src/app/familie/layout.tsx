@@ -19,14 +19,22 @@ export default async function FamilieLayout({ children }: { children: React.Reac
         </Link>
         <nav className="flex gap-4 items-center flex-wrap">
           <Link href="/familie/besuche/neu" className="text-base" style={{ color: "var(--farbe-warm-text)" }}>
-            Besuch ankündigen
+            Besuche
           </Link>
-          <Link href="/familie/fotos/hochladen" className="text-base" style={{ color: "var(--farbe-warm-text)" }}>
-            Foto hochladen
+          <Link href="/familie/fotos" className="text-base" style={{ color: "var(--farbe-warm-text)" }}>
+            Fotos
           </Link>
           <Link href="/familie/kalender" className="text-base" style={{ color: "var(--farbe-warm-text)" }}>
-            Termin eintragen
+            Termine
           </Link>
+          <Link href="/familie/nachrichten" className="text-base" style={{ color: "var(--farbe-warm-text)" }}>
+            Nachricht
+          </Link>
+          {person.rolle === "admin" && (
+            <Link href="/admin" className="text-base font-semibold" style={{ color: "var(--farbe-warm-akzent)" }}>
+              Admin
+            </Link>
+          )}
           <span className="text-base" style={{ color: "var(--farbe-warm-text-weich)" }}>
             {person.spitzname ?? person.name}
           </span>
