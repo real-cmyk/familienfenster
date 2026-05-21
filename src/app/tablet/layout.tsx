@@ -12,6 +12,7 @@ const NAV_EINTRAEGE = [
   { href: "/tablet/fotos", icon: "🖼️", label: "Fotos" },
   { href: "/tablet/musik", icon: "🎵", label: "Musik" },
   { href: "/tablet/besuche", icon: "👨‍👩‍👧", label: "Familie" },
+  { href: "/tablet/avatar", icon: "💬", label: "Lina" },
 ];
 
 export default function TabletLayout({ children }: { children: React.ReactNode }) {
