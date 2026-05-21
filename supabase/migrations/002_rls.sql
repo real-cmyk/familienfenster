@@ -109,3 +109,26 @@ create policy "wohlbefinden_lesen" on wohlbefinden_signale
 -- === geraet_heartbeat ===
 create policy "heartbeat_lesen" on geraet_heartbeat
   for select using (ist_rolle('admin'));
+
+-- === Tabellenrechte für authenticated-Rolle ===
+grant usage on schema public to anon, authenticated;
+
+grant select on personen to authenticated;
+grant select on kalender_eintraege to authenticated;
+grant select on fotos to authenticated;
+grant select on playlists to authenticated;
+grant select on playlist_titel to authenticated;
+grant select on besuche to authenticated;
+grant select on nachrichten to authenticated;
+grant select on wohlbefinden_signale to authenticated;
+grant select on geraet_heartbeat to authenticated;
+
+grant insert, update, delete on personen to authenticated;
+grant insert, update, delete on kalender_eintraege to authenticated;
+grant insert, update, delete on fotos to authenticated;
+grant insert, update, delete on playlists to authenticated;
+grant insert, update, delete on playlist_titel to authenticated;
+grant insert, update, delete on besuche to authenticated;
+grant insert, update, delete on nachrichten to authenticated;
+grant insert, update, delete on wohlbefinden_signale to authenticated;
+grant insert, update, delete on geraet_heartbeat to authenticated;
