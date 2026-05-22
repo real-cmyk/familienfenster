@@ -25,11 +25,11 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "tts-1",
+        model: "tts-1-hd",     // Höchste Qualität
         input: text.slice(0, 4096),
-        voice: "nova", // Natürliche weibliche Stimme
+        voice: "shimmer",      // Sanft, warm, weiblich – passt zu Lina
         response_format: "mp3",
-        speed: 0.95,
+        speed: 0.92,
       }),
     });
 

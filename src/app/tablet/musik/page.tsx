@@ -3,16 +3,80 @@
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-/* ── Radio-Sender ───────────────────────────────────────────────────────── */
+/* ── Radio-Sender (zuverlässige Streams) ────────────────────────────────── */
 export const RADIO_SENDER = [
-  { id: "ndr1", name: "NDR 1 Welle Nord", region: "Norddeutschland", emoji: "🌊", url: "https://ndr-ndr1wellenord-kiel.cast.addradio.de/ndr/ndr1wellenord/kiel/mp3/128/stream.mp3" },
-  { id: "ndr2", name: "NDR 2", region: "Hits & Unterhaltung", emoji: "🎵", url: "https://ndr-ndr2.cast.addradio.de/ndr/ndr2/niedersachsen/mp3/128/stream.mp3" },
-  { id: "wdr4", name: "WDR 4", region: "Schlager & Oldies", emoji: "🎶", url: "https://wdr-wdr4.cast.addradio.de/wdr/wdr4/live/mp3/128/stream.mp3" },
-  { id: "hr1", name: "hr1", region: "Klassisch modern", emoji: "🎼", url: "https://hr-hr1.cast.addradio.de/hr/hr1/live/mp3/128/stream.mp3" },
-  { id: "dlf", name: "Deutschlandradio", region: "Nachrichten & Kultur", emoji: "📻", url: "https://st01.sslstream.dlf.de/dlf/01/128/mp3/stream.mp3" },
-  { id: "bay1", name: "Bayern 1", region: "Volksmusik & Heimat", emoji: "🏔️", url: "https://dispatcher.rndfnk.com/br/br1/live/mp3/low" },
-  { id: "mdrjump", name: "MDR Jump", region: "Aktuelle Hits", emoji: "⭐", url: "https://mdr-jump.cast.addradio.de/mdr/jump/live/mp3/128/stream.mp3" },
-  { id: "swrslager", name: "SWR4", region: "Schlager & Evergreens", emoji: "🌻", url: "https://dispatcher.rndfnk.com/swr/swr4/bw/mp3/128/stream.mp3" },
+  {
+    id: "ndr1",
+    name: "NDR 1 Welle Nord",
+    region: "Norddeutschland",
+    emoji: "🌊",
+    farbe: "#E8F4FD",
+    rand: "#2196F3",
+    url: "https://ndr-ndr1wellenord-kiel.cast.addradio.de/ndr/ndr1wellenord/kiel/mp3/128/stream.mp3",
+  },
+  {
+    id: "ndr2",
+    name: "NDR 2",
+    region: "Hits & Unterhaltung",
+    emoji: "🎵",
+    farbe: "#EDE7F6",
+    rand: "#7B1FA2",
+    url: "https://ndr-ndr2.cast.addradio.de/ndr/ndr2/niedersachsen/mp3/128/stream.mp3",
+  },
+  {
+    id: "wdr4",
+    name: "WDR 4",
+    region: "Schlager & Oldies",
+    emoji: "🎶",
+    farbe: "#FFF8E1",
+    rand: "#F57F17",
+    url: "https://wdr-wdr4.cast.addradio.de/wdr/wdr4/live/mp3/128/stream.mp3",
+  },
+  {
+    id: "hr1",
+    name: "hr1",
+    region: "Klassisch modern",
+    emoji: "🎼",
+    farbe: "#E8F5E9",
+    rand: "#388E3C",
+    url: "https://dispatcher.rndfnk.com/hr/hr1/live/mp3/128/stream.mp3",
+  },
+  {
+    id: "dlf",
+    name: "Deutschlandfunk",
+    region: "Nachrichten & Kultur",
+    emoji: "📰",
+    farbe: "#FCE4EC",
+    rand: "#C62828",
+    url: "https://st01.sslstream.dlf.de/dlf/01/128/mp3/stream.mp3",
+  },
+  {
+    id: "bay1",
+    name: "Bayern 1",
+    region: "Volksmusik & Heimat",
+    emoji: "🏔️",
+    farbe: "#F3E5F5",
+    rand: "#6A1B9A",
+    url: "https://dispatcher.rndfnk.com/br/br1/live/mp3/low",
+  },
+  {
+    id: "swr4",
+    name: "SWR4",
+    region: "Schlager & Evergreens",
+    emoji: "🌻",
+    farbe: "#FFFDE7",
+    rand: "#F9A825",
+    url: "https://dispatcher.rndfnk.com/swr/swr4/bw/mp3/128/stream.mp3",
+  },
+  {
+    id: "mdrjump",
+    name: "MDR Jump",
+    region: "Aktuelle Hits",
+    emoji: "⚡",
+    farbe: "#E0F2F1",
+    rand: "#00796B",
+    url: "https://mdr-jump.cast.addradio.de/mdr/jump/live/mp3/128/stream.mp3",
+  },
 ];
 
 type Playlist = { id: string; name: string; beschreibung: string | null };
@@ -24,8 +88,10 @@ export default function MusikSeite() {
 
   // Radio
   const [favoriten, setFavoriten] = useState<string[]>([]);
+  const [favoritenGeladen, setFavoritenGeladen] = useState(false);
   const [aktivesSender, setAktivesSender] = useState<string | null>(null);
   const [radioSpielt, setRadioSpielt] = useState(false);
+  const [radioFehler, setRadioFehler] = useState<string | null>(null);
   const radioRef = useRef<HTMLAudioElement | null>(null);
 
   // Playlists
@@ -46,6 +112,7 @@ export default function MusikSeite() {
       .select("station_id")
       .then(({ data }) => {
         setFavoriten((data ?? []).map((r: { station_id: string }) => r.station_id));
+        setFavoritenGeladen(true);
       });
   }, []);
 
@@ -70,10 +137,12 @@ export default function MusikSeite() {
     // Playlist stoppen
     audioRef.current?.pause();
     setSpielt(false);
+    setRadioFehler(null);
 
     if (!radioRef.current) radioRef.current = new Audio();
     const r = radioRef.current;
 
+    // Gleiches Sender → toggle
     if (aktivesSender === senderId && radioSpielt) {
       r.pause();
       setRadioSpielt(false);
@@ -83,7 +152,19 @@ export default function MusikSeite() {
 
     r.src = sender.url;
     r.volume = lautstaerke;
-    r.play().catch(() => {});
+    r.onerror = () => {
+      setRadioFehler(`„${sender.name}" ist gerade nicht erreichbar.`);
+      setRadioSpielt(false);
+      setAktivesSender(null);
+    };
+    r.onplaying = () => { setRadioFehler(null); };
+
+    r.load();
+    r.play().catch(() => {
+      setRadioFehler(`„${sender.name}" konnte nicht gestartet werden.`);
+      setRadioSpielt(false);
+      setAktivesSender(null);
+    });
     setAktivesSender(senderId);
     setRadioSpielt(true);
   }
@@ -93,18 +174,15 @@ export default function MusikSeite() {
     radioRef.current?.pause();
     setRadioSpielt(false);
     setAktivesSender(null);
-
     const supabase = createClient();
     setAktivePlaylist(playlist);
     setSpielt(false);
     setTitelIndex(0);
-
     const { data } = await supabase
       .from("playlist_titel")
       .select("id, titel, kuenstler, storage_key, reihenfolge")
       .eq("playlist_id", playlist.id)
       .order("reihenfolge", { ascending: true });
-
     const liste = data ?? [];
     setTitel(liste);
     if (liste.length > 0) {
@@ -148,9 +226,8 @@ export default function MusikSeite() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioUrl]);
 
-  /* ── Favoriten-Sender (oben in Radio-Tab) ────────────────────────────── */
+  /* ── Favoriten filtern ───────────────────────────────────────────────── */
   const favorisierteSender = RADIO_SENDER.filter((s) => favoriten.includes(s.id));
-  const andereSender = RADIO_SENDER.filter((s) => !favoriten.includes(s.id));
 
   /* ── UI ──────────────────────────────────────────────────────────────── */
   return (
@@ -163,11 +240,11 @@ export default function MusikSeite() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className="flex-1 py-3 text-lg font-semibold transition-colors"
+            className="flex-1 py-3 text-xl font-semibold transition-colors"
             style={{
               background: tab === t ? "var(--farbe-warm-akzent)" : "var(--farbe-hell-karte)",
               color: tab === t ? "white" : "var(--farbe-warm-akzent)",
-              minHeight: "52px",
+              minHeight: "56px",
             }}
           >
             {t === "radio" ? "📻 Radio" : "🎵 Playlisten"}
@@ -177,47 +254,100 @@ export default function MusikSeite() {
 
       {/* Lautstärke */}
       <div className="flex items-center gap-4 px-2">
-        <span className="text-2xl" aria-hidden="true">🔈</span>
-        <input
-          type="range" min="0" max="1" step="0.05" value={lautstaerke}
+        <span className="text-2xl">🔈</span>
+        <input type="range" min="0" max="1" step="0.05" value={lautstaerke}
           onChange={(e) => setLautstaerke(parseFloat(e.target.value))}
           className="flex-1"
-          style={{ height: "12px", accentColor: "var(--farbe-warm-akzent)", cursor: "pointer" }}
+          style={{ height: "14px", accentColor: "var(--farbe-warm-akzent)", cursor: "pointer" }}
           aria-label="Lautstärke"
         />
-        <span className="text-2xl" aria-hidden="true">🔊</span>
+        <span className="text-2xl">🔊</span>
       </div>
 
       {/* ── Radio-Tab ── */}
       {tab === "radio" && (
         <div className="flex flex-col gap-4">
-          {favorisierteSender.length > 0 && (
-            <div>
-              <p className="text-base font-semibold mb-2" style={{ color: "var(--farbe-warm-text-weich)" }}>
-                ⭐ Favoriten
-              </p>
-              <div className="flex flex-col gap-2">
-                {favorisierteSender.map((s) => (
-                  <SenderButton key={s.id} sender={s} aktiv={aktivesSender === s.id && radioSpielt} onPlay={spieleRadio} />
-                ))}
-              </div>
+          {/* Fehler-Banner */}
+          {radioFehler && (
+            <div className="rounded-2xl px-4 py-3 text-base" style={{ background: "#FEE2E2", color: "#DC2626" }}>
+              ⚠️ {radioFehler}
             </div>
           )}
 
-          {andereSender.length > 0 && (
-            <div>
-              {favorisierteSender.length > 0 && (
-                <p className="text-base font-semibold mb-2" style={{ color: "var(--farbe-warm-text-weich)" }}>
-                  Alle Sender
-                </p>
-              )}
-              <div className="flex flex-col gap-2">
-                {andereSender.map((s) => (
-                  <SenderButton key={s.id} sender={s} aktiv={aktivesSender === s.id && radioSpielt} onPlay={spieleRadio} />
-                ))}
-              </div>
+          {/* Noch keine Favoriten */}
+          {favoritenGeladen && favorisierteSender.length === 0 && (
+            <div className="text-center py-14 rounded-3xl" style={{ background: "var(--farbe-hell-karte)" }}>
+              <p className="text-5xl mb-4">📻</p>
+              <p className="text-xl mb-2" style={{ color: "var(--farbe-warm-text)" }}>
+                Noch keine Lieblingssender
+              </p>
+              <p className="text-base" style={{ color: "var(--farbe-warm-text-weich)" }}>
+                Die Familie kann in ihrer App Sender als Favoriten markieren – dann erscheinen sie hier.
+              </p>
             </div>
           )}
+
+          {/* Favoriten als Kacheln (2 Spalten) */}
+          {favorisierteSender.length > 0 && (
+            <div className="grid grid-cols-2 gap-4">
+              {favorisierteSender.map((sender) => {
+                const istAktiv = aktivesSender === sender.id && radioSpielt;
+                return (
+                  <button
+                    key={sender.id}
+                    onClick={() => spieleRadio(sender.id)}
+                    className="rounded-3xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95"
+                    style={{
+                      background: istAktiv ? "var(--farbe-warm-akzent)" : sender.farbe,
+                      border: `3px solid ${istAktiv ? "var(--farbe-warm-akzent)" : sender.rand}`,
+                      minHeight: "150px",
+                      padding: "20px 12px",
+                      boxShadow: istAktiv ? "0 6px 20px rgba(193,112,58,0.35)" : "none",
+                    }}
+                  >
+                    {/* Animierte Wellen wenn aktiv */}
+                    {istAktiv ? (
+                      <div className="flex gap-1 items-end" style={{ height: "36px" }}>
+                        {[3,5,7,5,3,6,4].map((h, i) => (
+                          <div key={i} className="rounded-full" style={{
+                            width: "7px",
+                            background: "white",
+                            height: `${h * 4}px`,
+                            animation: `linawelle ${0.4 + i * 0.07}s ease-in-out infinite alternate`,
+                            animationDelay: `${i * 0.06}s`,
+                          }} />
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-5xl">{sender.emoji}</span>
+                    )}
+
+                    <div className="text-center">
+                      <p
+                        className="text-lg font-bold leading-tight"
+                        style={{ color: istAktiv ? "white" : "var(--farbe-warm-text)" }}
+                      >
+                        {sender.name}
+                      </p>
+                      <p
+                        className="text-sm mt-1"
+                        style={{ color: istAktiv ? "rgba(255,255,255,0.8)" : "var(--farbe-warm-text-weich)" }}
+                      >
+                        {istAktiv ? "Tippen zum Stoppen" : sender.region}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <style>{`
+            @keyframes linawelle {
+              from { transform: scaleY(0.4); }
+              to   { transform: scaleY(1.8); }
+            }
+          `}</style>
         </div>
       )}
 
@@ -225,19 +355,16 @@ export default function MusikSeite() {
       {tab === "playlists" && !aktivePlaylist && (
         <div className="flex flex-col gap-3">
           {playlists.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-12 rounded-3xl" style={{ background: "var(--farbe-hell-karte)" }}>
               <p className="text-5xl mb-4">🎵</p>
               <p className="text-xl" style={{ color: "var(--farbe-warm-text-weich)" }}>
                 Noch keine Playlisten eingerichtet.
               </p>
             </div>
           ) : playlists.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => ladePlaylist(p)}
+            <button key={p.id} onClick={() => ladePlaylist(p)}
               className="rounded-2xl p-5 text-left flex items-center gap-4 transition-transform active:scale-98"
-              style={{ background: "var(--farbe-hell-karte)", border: "2px solid var(--farbe-warm-akzent-hell)", minHeight: "80px" }}
-            >
+              style={{ background: "var(--farbe-hell-karte)", border: "2px solid var(--farbe-warm-akzent-hell)", minHeight: "80px" }}>
               <span className="text-3xl">🎵</span>
               <div>
                 <p className="text-xl font-semibold" style={{ color: "var(--farbe-warm-text)" }}>{p.name}</p>
@@ -250,19 +377,21 @@ export default function MusikSeite() {
 
       {tab === "playlists" && aktivePlaylist && (
         <div className="flex flex-col gap-5">
-          <button
-            onClick={() => { setAktivePlaylist(null); setSpielt(false); audioRef.current?.pause(); }}
+          <button onClick={() => { setAktivePlaylist(null); setSpielt(false); audioRef.current?.pause(); }}
             className="text-left flex items-center gap-2"
-            style={{ color: "var(--farbe-warm-akzent)", minHeight: "44px", fontSize: "1.1rem" }}
-          >
+            style={{ color: "var(--farbe-warm-akzent)", minHeight: "44px", fontSize: "1.1rem" }}>
             ← Alle Playlisten
           </button>
 
           <div className="rounded-3xl p-6 text-center"
             style={{ background: "var(--farbe-hell-karte)", border: "2px solid var(--farbe-warm-akzent-hell)" }}>
             <p className="text-4xl mb-2">🎵</p>
-            <p className="text-2xl font-bold" style={{ color: "var(--farbe-warm-text)" }}>{titel[titelIndex]?.titel ?? "—"}</p>
-            <p className="text-lg" style={{ color: "var(--farbe-warm-text-weich)" }}>{titel[titelIndex]?.kuenstler ?? ""}</p>
+            <p className="text-2xl font-bold" style={{ color: "var(--farbe-warm-text)" }}>
+              {titel[titelIndex]?.titel ?? "—"}
+            </p>
+            <p className="text-lg" style={{ color: "var(--farbe-warm-text-weich)" }}>
+              {titel[titelIndex]?.kuenstler ?? ""}
+            </p>
           </div>
 
           <div className="flex items-center justify-center gap-6">
@@ -279,62 +408,24 @@ export default function MusikSeite() {
               style={{ width: "72px", height: "72px", background: "var(--farbe-warm-bg2)", fontSize: "1.8rem" }}>⏭</button>
           </div>
 
-          {titel.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {titel.map((t, i) => (
-                <button
-                  key={t.id}
-                  onClick={async () => { setTitelIndex(i); const url = await ladeAudioUrl(t.storage_key); setAudioUrl(url); setSpielt(true); }}
-                  className="rounded-xl px-4 py-3 text-left"
-                  style={{
-                    background: i === titelIndex ? "var(--farbe-warm-bg2)" : "transparent",
-                    color: i === titelIndex ? "var(--farbe-warm-akzent)" : "var(--farbe-warm-text)",
-                    fontWeight: i === titelIndex ? "700" : "400",
-                    minHeight: "56px",
-                    border: i === titelIndex ? "2px solid var(--farbe-warm-akzent-hell)" : "2px solid transparent",
-                  }}
-                >
-                  {i === titelIndex && spielt ? "▶ " : ""}{t.titel}{t.kuenstler ? ` — ${t.kuenstler}` : ""}
-                </button>
-              ))}
-            </div>
-          )}
+          {titel.map((t, i) => (
+            <button key={t.id}
+              onClick={async () => { setTitelIndex(i); const url = await ladeAudioUrl(t.storage_key); setAudioUrl(url); setSpielt(true); }}
+              className="rounded-xl px-4 py-3 text-left"
+              style={{
+                background: i === titelIndex ? "var(--farbe-warm-bg2)" : "transparent",
+                color: i === titelIndex ? "var(--farbe-warm-akzent)" : "var(--farbe-warm-text)",
+                fontWeight: i === titelIndex ? "700" : "400",
+                minHeight: "56px",
+                border: i === titelIndex ? "2px solid var(--farbe-warm-akzent-hell)" : "2px solid transparent",
+              }}>
+              {i === titelIndex && spielt ? "▶ " : ""}{t.titel}{t.kuenstler ? ` — ${t.kuenstler}` : ""}
+            </button>
+          ))}
         </div>
       )}
 
       <audio ref={audioRef} onEnded={naechsterTitel} />
     </div>
-  );
-}
-
-/* ── Sender-Button ──────────────────────────────────────────────────────── */
-function SenderButton({
-  sender, aktiv, onPlay,
-}: {
-  sender: typeof RADIO_SENDER[0];
-  aktiv: boolean;
-  onPlay: (id: string) => void;
-}) {
-  return (
-    <button
-      onClick={() => onPlay(sender.id)}
-      className="rounded-2xl p-4 text-left flex items-center gap-4 transition-transform active:scale-98"
-      style={{
-        background: aktiv ? "var(--farbe-warm-akzent)" : "var(--farbe-hell-karte)",
-        border: `2px solid ${aktiv ? "var(--farbe-warm-akzent)" : "var(--farbe-warm-akzent-hell)"}`,
-        minHeight: "72px",
-      }}
-    >
-      <span className="text-3xl shrink-0">{aktiv ? "🔊" : sender.emoji}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-xl font-semibold truncate" style={{ color: aktiv ? "white" : "var(--farbe-warm-text)" }}>
-          {sender.name}
-        </p>
-        <p className="text-base" style={{ color: aktiv ? "rgba(255,255,255,0.8)" : "var(--farbe-warm-text-weich)" }}>
-          {sender.region}
-        </p>
-      </div>
-      {aktiv && <span className="text-white text-xl shrink-0">⏸</span>}
-    </button>
   );
 }
