@@ -155,15 +155,25 @@ async function ladeDaten() {
   const supabase = createAdminClient();
   const heute = new Date().toISOString().split("T")[0];
 
-  const { data: termine } = await supabase
-    .from("kalender_eintraege")
-    .select("id, titel, termin_datum, termin_zeit, ganztaegig")
-    .gte("termin_datum", heute)
-    .order("termin_datum", { ascending: true })
-    .order("termin_zeit", { ascending: true })
-    .limit(1);
+  const [{ data: termine }, { data: omas }] = await Promise.all([
+    supabase
+      .from("kalender_eintraege")
+      .select("id, titel, termin_datum, termin_zeit, ganztaegig")
+      .gte("termin_datum", heute)
+      .order("termin_datum", { ascending: true })
+      .order("termin_zeit", { ascending: true })
+      .limit(1),
+    supabase
+      .from("personen")
+      .select("name, spitzname")
+      .eq("rolle", "oma")
+      .limit(1),
+  ]);
 
-  return { naechsterTermin: termine?.[0] ?? null };
+  return {
+    naechsterTermin: termine?.[0] ?? null,
+    omaName: omas?.[0]?.spitzname ?? omas?.[0]?.name ?? null,
+  };
 }
 
 /* ── Kachel-Konfiguration ─────────────────────────────────────────────── */
@@ -206,7 +216,7 @@ const KACHELN = [
 /* ── Seite ────────────────────────────────────────────────────────────── */
 
 export default async function TabletHomescreen() {
-  const { naechsterTermin } = await ladeDaten();
+  const { naechsterTermin, omaName } = await ladeDaten();
   const jetzt = new Date();
   const gruss = tageszeitGruss();
   const datumText = formatiereDatum(jetzt);
@@ -217,7 +227,7 @@ export default async function TabletHomescreen() {
       {/* Kopfbereich */}
       <div className="text-center pt-2">
         <p className="text-3xl font-bold" style={{ color: "var(--farbe-warm-akzent)" }}>
-          {gruss} ❤️
+          {gruss}{omaName ? `, ${omaName}` : ""} ❤️
         </p>
         <p className="text-lg mt-1" style={{ color: "var(--farbe-warm-text-weich)" }}>
           {datumText}

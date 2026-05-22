@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { aktiviereWakeLock, aktiviereKioskMode } from "@/lib/kiosk";
 import HeartbeatSender from "@/components/tablet/HeartbeatSender";
+import TabletRealtime from "@/components/tablet/TabletRealtime";
 
 export default function TabletLayout({ children }: { children: React.ReactNode }) {
   const pfad = usePathname();
@@ -21,6 +22,7 @@ export default function TabletLayout({ children }: { children: React.ReactNode }
       style={{ background: "var(--farbe-warm-bg)" }}
     >
       <HeartbeatSender />
+      <TabletRealtime />
 
       {/* Home-Button — erscheint auf allen Unterseiten */}
       {!istHomescreen && (

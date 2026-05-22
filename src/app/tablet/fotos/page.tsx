@@ -32,26 +32,34 @@ export default function FotosSeite() {
   }, []);
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6" style={{ color: "var(--farbe-warm-text)" }}>
+    <div className="p-5 pb-8">
+      <h1 className="text-3xl font-bold mb-5" style={{ color: "var(--farbe-warm-text)" }}>
         Familienfotos
       </h1>
 
       {fotos.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-5xl mb-4">🖼️</p>
+          <p className="text-6xl mb-4">🖼️</p>
           <p className="text-xl" style={{ color: "var(--farbe-warm-text-weich)" }}>
             Noch keine Fotos vorhanden.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        /* Collage: 2-spaltig, natürliche Seitenverhältnisse erhalten */
+        <div style={{ columns: 2, gap: "10px" }}>
           {fotos.map((foto) => (
             <button
               key={foto.id}
               onClick={() => setAusgewaehlt(foto.id)}
-              className="rounded-2xl overflow-hidden transition-transform active:scale-95"
-              style={{ height: "160px", background: "var(--farbe-warm-bg2)" }}
+              className="rounded-2xl overflow-hidden transition-transform active:scale-97 w-full"
+              style={{
+                display: "block",
+                breakInside: "avoid",
+                marginBottom: "10px",
+                background: "var(--farbe-warm-akzent-hell)",
+                border: "none",
+                padding: 0,
+              }}
               aria-label={foto.beschriftung ?? "Foto öffnen"}
             >
               {urls[foto.id] ? (
@@ -59,53 +67,72 @@ export default function FotosSeite() {
                 <img
                   src={urls[foto.id]}
                   alt={foto.beschriftung ?? "Familienfoto"}
-                  className="w-full h-full object-cover"
+                  className="w-full"
+                  style={{
+                    display: "block",
+                    borderRadius: "16px",
+                    objectFit: "cover",
+                  }}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
+                <div
+                  className="w-full flex items-center justify-center"
+                  style={{ height: "140px", borderRadius: "16px" }}
+                >
                   <span className="text-4xl">🖼️</span>
                 </div>
+              )}
+              {foto.beschriftung && (
+                <p
+                  className="text-sm text-center px-2 py-2"
+                  style={{ color: "var(--farbe-warm-text-weich)" }}
+                >
+                  {foto.beschriftung}
+                </p>
               )}
             </button>
           ))}
         </div>
       )}
 
-      {/* Vollbild-Ansicht */}
-      {ausgewaehlt && (
-        <div
-          className="fixed inset-0 flex items-center justify-center p-4 z-50"
-          style={{ background: "rgba(0,0,0,0.85)" }}
-          onClick={() => setAusgewaehlt(null)}
-        >
-          {(() => {
-            const foto = fotos.find((f) => f.id === ausgewaehlt);
-            return foto && urls[foto.id] ? (
-              <div className="max-w-full max-h-full" onClick={(e) => e.stopPropagation()}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+      {/* Vollbild-Overlay */}
+      {ausgewaehlt && (() => {
+        const foto = fotos.find((f) => f.id === ausgewaehlt);
+        return foto ? (
+          <div
+            className="fixed inset-0 flex items-center justify-center p-4 z-50"
+            style={{ background: "rgba(0,0,0,0.9)" }}
+            onClick={() => setAusgewaehlt(null)}
+          >
+            <div className="max-w-full max-h-full flex flex-col items-center gap-4"
+              onClick={(e) => e.stopPropagation()}>
+              {urls[foto.id] ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={urls[foto.id]}
                   alt={foto.beschriftung ?? "Familienfoto"}
-                  className="max-w-screen max-h-screen object-contain rounded-2xl"
-                  style={{ maxWidth: "90vw", maxHeight: "80vh" }}
+                  style={{
+                    maxWidth: "92vw",
+                    maxHeight: "78vh",
+                    objectFit: "contain",
+                    borderRadius: "16px",
+                  }}
                 />
-                {foto.beschriftung && (
-                  <p className="text-white text-center mt-3 text-lg">{foto.beschriftung}</p>
-                )}
-                <div className="flex justify-center mt-4">
-                  <button
-                    onClick={() => setAusgewaehlt(null)}
-                    className="rounded-2xl px-8 py-3 text-lg font-semibold text-white"
-                    style={{ background: "var(--farbe-warm-akzent)", minHeight: "56px" }}
-                  >
-                    Schließen
-                  </button>
-                </div>
-              </div>
-            ) : null;
-          })()}
-        </div>
-      )}
+              ) : null}
+              {foto.beschriftung && (
+                <p className="text-white text-xl text-center">{foto.beschriftung}</p>
+              )}
+              <button
+                onClick={() => setAusgewaehlt(null)}
+                className="rounded-2xl px-8 py-4 text-xl font-semibold text-white"
+                style={{ background: "var(--farbe-warm-akzent)", minHeight: "60px" }}
+              >
+                Schließen
+              </button>
+            </div>
+          </div>
+        ) : null;
+      })()}
     </div>
   );
 }
