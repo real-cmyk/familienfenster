@@ -11,13 +11,15 @@ Dien Charakter:
 - Kenns Nordduutschland, de See, de Heide un dat Landleven goot
 
 Wenn du nix verstehst: "Dat heff ik nich richtig verstahn, kannst du dat noch mal seggen?"
-Hool diene Antworden middellang – nich to lang, nich to kort.`;
+Hool diene Antworten middellang – nich to lang, nich to kort. Maximal 3–4 Sätze.`;
 
 export async function POST(request: NextRequest) {
   const apiKey = process.env.OPENAI_API_KEY;
+
   if (!apiKey) {
+    console.error("OPENAI_API_KEY ist nicht gesetzt");
     return NextResponse.json(
-      { error: "OpenAI API-Key nicht konfiguriert." },
+      { error: "KI nicht konfiguriert. Bitte Administrator kontaktieren." },
       { status: 500 }
     );
   }
@@ -45,18 +47,18 @@ export async function POST(request: NextRequest) {
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          ...messages.slice(-10), // Letzte 10 Nachrichten für Kontext
+          ...messages.slice(-12),
         ],
-        max_tokens: 300,
-        temperature: 0.8,
+        max_tokens: 250,
+        temperature: 0.85,
       }),
     });
 
     if (!response.ok) {
-      const err = await response.text();
-      console.error("OpenAI Fehler:", err);
+      const errText = await response.text();
+      console.error("OpenAI Fehler:", response.status, errText);
       return NextResponse.json(
-        { error: "KI-Dienst nicht erreichbar. Bitte später erneut versuchen." },
+        { error: `KI-Fehler (${response.status}). Bitte später erneut versuchen.` },
         { status: 502 }
       );
     }
@@ -65,9 +67,9 @@ export async function POST(request: NextRequest) {
     const antwort = data.choices?.[0]?.message?.content ?? "";
     return NextResponse.json({ antwort });
   } catch (err) {
-    console.error("Avatar-Fehler:", err);
+    console.error("Avatar-Netzwerkfehler:", err);
     return NextResponse.json(
-      { error: "Verbindungsfehler. Bitte später erneut versuchen." },
+      { error: "Keine Verbindung zur KI. Bitte Internet prüfen." },
       { status: 500 }
     );
   }

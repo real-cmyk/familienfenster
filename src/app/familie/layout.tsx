@@ -7,41 +7,48 @@ export default async function FamilieLayout({ children }: { children: React.Reac
   if (!person) redirect("/auth/login");
   if (person.rolle !== "familie" && person.rolle !== "admin") redirect("/auth/login");
 
+  const navLinks = [
+    { href: "/familie/kalender", label: "📅 Kalender" },
+    { href: "/familie/fotos", label: "📸 Fotos" },
+    { href: "/familie/nachrichten", label: "✉️ Nachricht" },
+    ...(person.rolle === "admin" ? [{ href: "/admin", label: "⚙️ Admin" }] : []),
+  ];
+
   return (
     <div className="min-h-screen" style={{ background: "var(--farbe-warm-bg)" }}>
       {/* Navigation */}
       <header
-        className="sticky top-0 z-10 border-b px-6 py-4 flex items-center justify-between"
+        className="sticky top-0 z-10 border-b"
         style={{ background: "var(--farbe-hell-karte)", borderColor: "var(--farbe-warm-akzent-hell)" }}
       >
-        <Link href="/familie" className="text-xl font-bold" style={{ color: "var(--farbe-warm-akzent)" }}>
-          Familienfenster
-        </Link>
-        <nav className="flex gap-4 items-center flex-wrap">
-          <Link href="/familie/besuche" className="text-base" style={{ color: "var(--farbe-warm-text)" }}>
-            Besuche
+        {/* Top row: logo + person name */}
+        <div className="px-4 pt-3 pb-1 flex items-center justify-between">
+          <Link href="/familie" className="text-lg font-bold leading-tight" style={{ color: "var(--farbe-warm-akzent)" }}>
+            Familienfenster
           </Link>
-          <Link href="/familie/fotos" className="text-base" style={{ color: "var(--farbe-warm-text)" }}>
-            Fotos
-          </Link>
-          <Link href="/familie/kalender" className="text-base" style={{ color: "var(--farbe-warm-text)" }}>
-            Termine
-          </Link>
-          <Link href="/familie/nachrichten" className="text-base" style={{ color: "var(--farbe-warm-text)" }}>
-            Nachricht
-          </Link>
-          {person.rolle === "admin" && (
-            <Link href="/admin" className="text-base font-semibold" style={{ color: "var(--farbe-warm-akzent)" }}>
-              Admin
-            </Link>
-          )}
-          <span className="text-base" style={{ color: "var(--farbe-warm-text-weich)" }}>
+          <span className="text-sm px-3 py-1 rounded-full" style={{ background: "var(--farbe-warm-akzent-hell)", color: "var(--farbe-warm-akzent)" }}>
             {person.spitzname ?? person.name}
           </span>
+        </div>
+        {/* Bottom row: nav links */}
+        <nav className="px-4 pb-2 flex gap-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          {navLinks.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className="text-sm font-medium px-4 py-2 rounded-full whitespace-nowrap shrink-0"
+              style={{
+                background: "var(--farbe-warm-akzent-hell)",
+                color: "var(--farbe-warm-akzent)",
+              }}
+            >
+              {label}
+            </Link>
+          ))}
         </nav>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-8">{children}</main>
+      <main className="max-w-2xl mx-auto px-4 py-6">{children}</main>
     </div>
   );
 }
