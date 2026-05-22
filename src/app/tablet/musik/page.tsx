@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-/* ── Radio-Sender (zuverlässige Streams) ────────────────────────────────── */
+/* ── Radio-Sender mit Backup-URLs ───────────────────────────────────────── */
 export const RADIO_SENDER = [
   {
     id: "ndr1",
@@ -13,6 +13,7 @@ export const RADIO_SENDER = [
     farbe: "#E8F4FD",
     rand: "#2196F3",
     url: "https://ndr-ndr1wellenord-kiel.cast.addradio.de/ndr/ndr1wellenord/kiel/mp3/128/stream.mp3",
+    backup: "https://ndr-ndr1wellenord.cast.addradio.de/ndr/ndr1wellenord/live/mp3/128/stream.mp3",
   },
   {
     id: "ndr2",
@@ -21,7 +22,8 @@ export const RADIO_SENDER = [
     emoji: "🎵",
     farbe: "#EDE7F6",
     rand: "#7B1FA2",
-    url: "https://ndr-ndr2.cast.addradio.de/ndr/ndr2/niedersachsen/mp3/128/stream.mp3",
+    url: "https://ndr-ndr2.cast.addradio.de/ndr/ndr2/live/mp3/128/stream.mp3",
+    backup: "https://ndr-ndr2.cast.addradio.de/ndr/ndr2/niedersachsen/mp3/128/stream.mp3",
   },
   {
     id: "wdr4",
@@ -31,6 +33,7 @@ export const RADIO_SENDER = [
     farbe: "#FFF8E1",
     rand: "#F57F17",
     url: "https://wdr-wdr4.cast.addradio.de/wdr/wdr4/live/mp3/128/stream.mp3",
+    backup: "https://www.wdr.de/wdr4/wdr4-stream.m3u",
   },
   {
     id: "hr1",
@@ -40,6 +43,7 @@ export const RADIO_SENDER = [
     farbe: "#E8F5E9",
     rand: "#388E3C",
     url: "https://dispatcher.rndfnk.com/hr/hr1/live/mp3/128/stream.mp3",
+    backup: "https://hr-hr1.cast.addradio.de/hr/hr1/live/mp3/128/stream.mp3",
   },
   {
     id: "dlf",
@@ -49,6 +53,7 @@ export const RADIO_SENDER = [
     farbe: "#FCE4EC",
     rand: "#C62828",
     url: "https://st01.sslstream.dlf.de/dlf/01/128/mp3/stream.mp3",
+    backup: "https://st01.sslstream.dlf.de/dlf/01/64/mp3/stream.mp3",
   },
   {
     id: "bay1",
@@ -58,15 +63,17 @@ export const RADIO_SENDER = [
     farbe: "#F3E5F5",
     rand: "#6A1B9A",
     url: "https://dispatcher.rndfnk.com/br/br1/live/mp3/low",
+    backup: "https://br-br1-muenchen.cast.addradio.de/br/br1/muenchen/mp3/128/stream.mp3",
   },
   {
     id: "swr4",
-    name: "SWR4",
+    name: "SWR4 BW",
     region: "Schlager & Evergreens",
     emoji: "🌻",
     farbe: "#FFFDE7",
     rand: "#F9A825",
     url: "https://dispatcher.rndfnk.com/swr/swr4/bw/mp3/128/stream.mp3",
+    backup: "https://swr-swr4-bw.cast.addradio.de/swr/swr4/bw/mp3/128/stream.mp3",
   },
   {
     id: "mdrjump",
@@ -76,6 +83,7 @@ export const RADIO_SENDER = [
     farbe: "#E0F2F1",
     rand: "#00796B",
     url: "https://mdr-jump.cast.addradio.de/mdr/jump/live/mp3/128/stream.mp3",
+    backup: "https://dispatcher.rndfnk.com/mdr/jump/live/mp3/128/stream.mp3",
   },
 ];
 
@@ -129,8 +137,8 @@ export default function MusikSeite() {
     if (radioRef.current) radioRef.current.volume = lautstaerke;
   }, [lautstaerke]);
 
-  /* ── Radio abspielen ─────────────────────────────────────────────────── */
-  function spieleRadio(senderId: string) {
+  /* ── Radio abspielen (mit Backup-URL + Timeout) ─────────────────────── */
+  function spieleRadio(senderId: string, versuch: 1 | 2 = 1) {
     const sender = RADIO_SENDER.find((s) => s.id === senderId);
     if (!sender) return;
 
@@ -139,34 +147,69 @@ export default function MusikSeite() {
     setSpielt(false);
     setRadioFehler(null);
 
-    if (!radioRef.current) radioRef.current = new Audio();
-    const r = radioRef.current;
-
-    // Gleiches Sender → toggle
+    // Toggle: gleicher Sender → stoppen
     if (aktivesSender === senderId && radioSpielt) {
-      r.pause();
+      radioRef.current?.pause();
+      if (radioRef.current) radioRef.current.src = "";
       setRadioSpielt(false);
       setAktivesSender(null);
       return;
     }
 
-    r.src = sender.url;
-    r.volume = lautstaerke;
-    r.onerror = () => {
-      setRadioFehler(`„${sender.name}" ist gerade nicht erreichbar.`);
-      setRadioSpielt(false);
-      setAktivesSender(null);
-    };
-    r.onplaying = () => { setRadioFehler(null); };
+    // Altes Audio wegräumen
+    if (radioRef.current) {
+      radioRef.current.pause();
+      radioRef.current.src = "";
+    }
 
-    r.load();
-    r.play().catch(() => {
+    const streamUrl = versuch === 1 ? sender.url : (sender.backup ?? sender.url);
+    const audio = new Audio();
+    radioRef.current = audio;
+    audio.volume = lautstaerke;
+    audio.preload = "none";
+
+    setAktivesSender(senderId);
+    setRadioSpielt(false); // erst true wenn wirklich spielt
+
+    // Timeout: nach 8s ohne Wiedergabe → Backup versuchen oder Fehler
+    const timeout = setTimeout(() => {
+      if (audio.readyState < 3) {
+        audio.pause();
+        audio.src = "";
+        if (versuch === 1 && sender.backup) {
+          spieleRadio(senderId, 2);
+        } else {
+          setRadioFehler(`„${sender.name}" antwortet nicht – Internetverbindung prüfen.`);
+          setRadioSpielt(false);
+          setAktivesSender(null);
+        }
+      }
+    }, 8000);
+
+    audio.addEventListener("playing", () => {
+      clearTimeout(timeout);
+      setRadioSpielt(true);
+      setRadioFehler(null);
+    }, { once: true });
+
+    audio.addEventListener("error", () => {
+      clearTimeout(timeout);
+      if (versuch === 1 && sender.backup) {
+        spieleRadio(senderId, 2);
+      } else {
+        setRadioFehler(`„${sender.name}" ist gerade nicht erreichbar.`);
+        setRadioSpielt(false);
+        setAktivesSender(null);
+      }
+    }, { once: true });
+
+    audio.src = streamUrl;
+    audio.play().catch(() => {
+      clearTimeout(timeout);
       setRadioFehler(`„${sender.name}" konnte nicht gestartet werden.`);
       setRadioSpielt(false);
       setAktivesSender(null);
     });
-    setAktivesSender(senderId);
-    setRadioSpielt(true);
   }
 
   /* ── Playlist-Funktionen ─────────────────────────────────────────────── */
