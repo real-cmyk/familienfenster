@@ -140,29 +140,26 @@ export default function AvatarSeite() {
     }
   }
 
-  /* ── WebRTC-Verbindung aufbauen (GA-API: SDP-Proxy über eigenen Server) ─ */
+  /* ── WebRTC-Verbindung aufbauen (GA Unified Interface) ─────────────────
+     SDP-Offer → /api/realtime-sdp (unser Server) → /v1/realtime/calls
+     Linas Instruktionen + App-Kontext gehen serverseitig mit in den Request
+     ─────────────────────────────────────────────────────────────────────── */
   const verbinde = useCallback(async () => {
     trenne();
     ph("verbindet");
     setFehler("");
 
     try {
-      // 1. Config (Linas Instruktionen + Tools) + Mikrofon parallel laden
-      const [configRes, stream] = await Promise.all([
-        fetch("/api/realtime-config"),
-        navigator.mediaDevices.getUserMedia({ audio: true }).catch((e) => {
-          throw new Error(`Mikrofon: ${(e as Error).message}`);
-        }),
-      ]);
-
-      const config = await configRes.json();
-      if (!configRes.ok || config.error) {
-        throw new Error(`Config: ${config.error ?? configRes.status}`);
+      // 1. Mikrofon anfordern
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (e) {
+        throw new Error(`Mikrofon: ${(e as Error).message}`);
       }
-
       streamRef.current = stream;
 
-      // 2. RTCPeerConnection aufbauen
+      // 2. RTCPeerConnection
       const pc = new RTCPeerConnection();
       pcRef.current = pc;
 
@@ -172,14 +169,12 @@ export default function AvatarSeite() {
       document.body.appendChild(audioEl);
       pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
 
-      // Mikrofon-Track einbinden
+      // Mikrofon-Track
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
 
-      // 3. Data-Channel für Events
+      // 3. Data-Channel
       const dc = pc.createDataChannel("oai-events");
       dcRef.current = dc;
-
-      let konfiguriert = false;
 
       dc.onopen = () => ph("bereit");
 
@@ -188,22 +183,9 @@ export default function AvatarSeite() {
         try { event = JSON.parse(e.data as string); } catch { return; }
 
         switch (event.type) {
-          // Session steht → Lina konfigurieren und Begrüßung starten
+          // Session fertig konfiguriert → Begrüßung starten
           case "session.created":
-            if (!konfiguriert && dc.readyState === "open") {
-              konfiguriert = true;
-              // Instruktionen, Tools und VAD setzen
-              dc.send(JSON.stringify({
-                type: "session.update",
-                session: {
-                  instructions: config.instructions,
-                  voice: config.voice,
-                  turn_detection: config.turn_detection,
-                  tools: config.tools,
-                  tool_choice: "auto",
-                },
-              }));
-              // Begrüßung auslösen
+            if (dc.readyState === "open") {
               dc.send(JSON.stringify({ type: "response.create" }));
             }
             break;
@@ -235,11 +217,9 @@ export default function AvatarSeite() {
             break;
           }
 
-          case "error": {
-            const errEvt = event.error as { message?: string } | undefined;
-            console.error("OpenAI Realtime Fehler:", errEvt?.message ?? event.error);
+          case "error":
+            console.error("Realtime Fehler:", (event.error as { message?: string })?.message ?? event.error);
             break;
-          }
         }
       };
 
@@ -251,15 +231,17 @@ export default function AvatarSeite() {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      // 5. SDP-Austausch über unseren Server (API-Key bleibt serverseitig)
+      // 5. SDP an unseren Server → OpenAI /v1/realtime/calls
+      //    Linas Instruktionen + App-Kontext werden serverseitig mit eingebettet
       const sdpRes = await fetch("/api/realtime-sdp", {
         method: "POST",
         headers: { "Content-Type": "application/sdp" },
         body: offer.sdp,
       });
+
       if (!sdpRes.ok) {
         const errBody = await sdpRes.json().catch(() => ({ error: sdpRes.status }));
-        throw new Error(`SDP: ${errBody.error ?? sdpRes.status}`);
+        throw new Error(errBody.error ?? `SDP-Fehler ${sdpRes.status}`);
       }
 
       const answerSdp = await sdpRes.text();
