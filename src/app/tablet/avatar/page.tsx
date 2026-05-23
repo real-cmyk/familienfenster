@@ -1,213 +1,362 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
-/* ── SVG-Avatar ────────────────────────────────────────────────────────── */
+/* ── SVG-Avatar ──────────────────────────────────────────────────────────
+   Augen-Fix: ry bleibt immer 9, Pupillen immer sichtbar → kein Augenrollen
+   ─────────────────────────────────────────────────────────────────────── */
 function LinaGesicht({ redet, hoert }: { redet: boolean; hoert: boolean }) {
   return (
-    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"
-      style={{ width: "160px", height: "160px" }} aria-hidden="true">
+    <svg
+      viewBox="0 0 200 200"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ width: "160px", height: "160px" }}
+      aria-hidden="true"
+    >
+      {/* Schatten */}
       <ellipse cx="102" cy="192" rx="55" ry="8" fill="rgba(0,0,0,0.10)" />
+      {/* Gesicht */}
       <circle cx="100" cy="95" r="74" fill="#F5C5A0" />
+      {/* Haare */}
       <ellipse cx="100" cy="30" rx="72" ry="34" fill="#B8B8B8" />
       <ellipse cx="35" cy="64" rx="21" ry="38" fill="#B8B8B8" />
       <ellipse cx="165" cy="64" rx="21" ry="38" fill="#B8B8B8" />
+      {/* Wangen */}
       <ellipse cx="62" cy="114" rx="17" ry="11" fill="rgba(220,90,70,0.22)" />
       <ellipse cx="138" cy="114" rx="17" ry="11" fill="rgba(220,90,70,0.22)" />
-      {/* Augen */}
-      <ellipse cx="76" cy="90" rx="11" ry={redet ? 3 : 9} fill="white" />
-      <ellipse cx="124" cy="90" rx="11" ry={redet ? 3 : 9} fill="white" />
-      {!redet && <><circle cx="78" cy="91" r="6" fill="#5D4037" /><circle cx="126" cy="91" r="6" fill="#5D4037" /></>}
-      {!redet && <><circle cx="80" cy="89" r="2" fill="white" /><circle cx="128" cy="89" r="2" fill="white" /></>}
-      {/* Augenbrauen */}
-      <path d="M65 78 Q76 73 87 78" fill="none" stroke="#8D6E63" strokeWidth="3" strokeLinecap="round" />
-      <path d="M113 78 Q124 73 135 78" fill="none" stroke="#8D6E63" strokeWidth="3" strokeLinecap="round" />
+      {/* Augen – ry immer 9, Pupillen immer sichtbar */}
+      <ellipse cx="76" cy="90" rx="11" ry="9" fill="white" />
+      <ellipse cx="124" cy="90" rx="11" ry="9" fill="white" />
+      <circle cx="78" cy="91" r="6" fill="#5D4037" />
+      <circle cx="126" cy="91" r="6" fill="#5D4037" />
+      <circle cx="80" cy="89" r="2" fill="white" />
+      <circle cx="128" cy="89" r="2" fill="white" />
+      {/* Augenbrauen – beim Reden leicht angehoben (freudiges Gesicht) */}
+      <path
+        d={redet ? "M65 75 Q76 70 87 75" : "M65 78 Q76 73 87 78"}
+        fill="none"
+        stroke="#8D6E63"
+        strokeWidth="3"
+        strokeLinecap="round"
+        style={{ transition: "d 0.3s" }}
+      />
+      <path
+        d={redet ? "M113 75 Q124 70 135 75" : "M113 78 Q124 73 135 78"}
+        fill="none"
+        stroke="#8D6E63"
+        strokeWidth="3"
+        strokeLinecap="round"
+        style={{ transition: "d 0.3s" }}
+      />
       {/* Nase */}
       <ellipse cx="100" cy="108" rx="7" ry="5" fill="#E8A070" />
       {/* Mund */}
       {redet ? (
-        <><ellipse cx="100" cy="130" rx="18" ry="13" fill="#C0392B" />
+        <>
+          <ellipse cx="100" cy="130" rx="18" ry="13" fill="#C0392B" />
           <ellipse cx="100" cy="133" rx="13" ry="8" fill="#E74C3C" />
-          <ellipse cx="100" cy="127" rx="18" ry="5" fill="#F5C5A0" /></>
+          <ellipse cx="100" cy="127" rx="18" ry="5" fill="#F5C5A0" />
+        </>
       ) : hoert ? (
-        <path d="M85 128 Q100 134 115 128" fill="none" stroke="#C0392B" strokeWidth="3.5" strokeLinecap="round" />
+        <path
+          d="M85 128 Q100 134 115 128"
+          fill="none"
+          stroke="#C0392B"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+        />
       ) : (
-        <path d="M82 128 Q100 140 118 128" fill="none" stroke="#C0392B" strokeWidth="3.5" strokeLinecap="round" />
+        <path
+          d="M82 128 Q100 140 118 128"
+          fill="none"
+          stroke="#C0392B"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+        />
       )}
+      {/* Ohrringe */}
       <circle cx="26" cy="100" r="5" fill="#C1703A" />
       <circle cx="174" cy="100" r="5" fill="#C1703A" />
     </svg>
   );
 }
 
-/* ── Konstanten ────────────────────────────────────────────────────────── */
-const BEGRUESSUNG = "Moin moin! Ik bün Lina. Snack eenfach mit mi – ik höör di to!";
+/* ── Typen & Konstanten ──────────────────────────────────────────────────── */
+type Phase = "verbindet" | "bereit" | "hoert" | "denkt" | "redet";
 
-/* ── Hauptseite ────────────────────────────────────────────────────────── */
+const REALTIME_MODEL = "gpt-4o-realtime-preview-2024-12-17";
+const OPENAI_REALTIME_URL = `https://api.openai.com/v1/realtime?model=${REALTIME_MODEL}`;
+
+/* ── Hauptseite ──────────────────────────────────────────────────────────── */
 export default function AvatarSeite() {
-  const [phase, setPhase] = useState<"start" | "hoert" | "denkt" | "redet">("start");
+  const [phase, setPhase] = useState<Phase>("verbindet");
   const [fehler, setFehler] = useState("");
 
-  // Refs – kein Closure-Problem
-  const audioEl = useRef<HTMLAudioElement | null>(null);
-  const recEl = useRef<unknown>(null);
-  const msgs = useRef<{ role: string; content: string }[]>([
-    { role: "assistant", content: BEGRUESSUNG },
-  ]);
-  const phaseRef = useRef<string>("start");
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const dcRef = useRef<RTCDataChannel | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const phaseRef = useRef<Phase>("verbindet");
+  const mountedRef = useRef(true);
 
-  function ph(p: typeof phase) {
+  function ph(p: Phase) {
+    if (!mountedRef.current) return;
     phaseRef.current = p;
     setPhase(p);
   }
 
-  /* ── TTS via OpenAI ────────────────────────────────────────────────── */
-  async function sprich(text: string) {
-    ph("redet");
-    try { (recEl.current as { stop?: () => void })?.stop?.(); } catch { /* ignore */ }
+  /* ── Aufräumen ──────────────────────────────────────────────────────── */
+  function trenne() {
+    try { streamRef.current?.getTracks().forEach((t) => t.stop()); } catch { /**/ }
+    try { dcRef.current?.close(); } catch { /**/ }
+    try { pcRef.current?.close(); } catch { /**/ }
+    streamRef.current = null;
+    dcRef.current = null;
+    pcRef.current = null;
+  }
 
+  /* ── Web-Suche Tool-Call verarbeiten ────────────────────────────────── */
+  async function handleWebSuche(callId: string, argsJson: string) {
     try {
-      const res = await fetch("/api/tts", {
+      const { suchbegriff } = JSON.parse(argsJson);
+      const res = await fetch("/api/web-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ suchbegriff }),
       });
-      if (!res.ok) throw new Error("TTS-Fehler");
+      const { ergebnis } = await res.json();
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = audioEl.current!;
-      a.src = url;
-      a.onended = () => {
-        URL.revokeObjectURL(url);
-        ph("start");
-        hoerZu();
-      };
-      await a.play();
-    } catch {
-      ph("start");
-      hoerZu();
+      if (dcRef.current?.readyState === "open") {
+        dcRef.current.send(
+          JSON.stringify({
+            type: "conversation.item.create",
+            item: {
+              type: "function_call_output",
+              call_id: callId,
+              output: ergebnis ?? "Keine Ergebnisse gefunden.",
+            },
+          })
+        );
+        dcRef.current.send(JSON.stringify({ type: "response.create" }));
+      }
+    } catch (err) {
+      console.error("Web-Suche Fehler:", err);
     }
   }
 
-  /* ── GPT-Antwort holen ─────────────────────────────────────────────── */
-  async function sende(text: string) {
-    if (!text.trim()) { hoerZu(); return; }
-    ph("denkt");
+  /* ── WebRTC-Verbindung aufbauen ─────────────────────────────────────── */
+  const verbinde = useCallback(async () => {
+    trenne();
+    ph("verbindet");
     setFehler("");
-    msgs.current = [...msgs.current, { role: "user", content: text }];
 
     try {
-      const res = await fetch("/api/avatar", {
+      // 1. Ephemeren Schlüssel von unserem Server holen
+      const sessionRes = await fetch("/api/realtime-session");
+      if (!sessionRes.ok) throw new Error("Session-Fehler vom Server");
+      const session = await sessionRes.json();
+      if (session.error) throw new Error(session.error);
+
+      const ephemeralKey: string = session.client_secret?.value;
+      if (!ephemeralKey) throw new Error("Kein Schlüssel erhalten");
+
+      // 2. RTCPeerConnection
+      const pc = new RTCPeerConnection();
+      pcRef.current = pc;
+
+      // 3. Linas Stimme → <audio autoplay>
+      pc.ontrack = (e) => {
+        const audio = new Audio();
+        audio.autoplay = true;
+        audio.srcObject = e.streams[0];
+      };
+
+      // 4. Mikrofon hinzufügen
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+
+      // 5. Data-Channel für Echtzeit-Events
+      const dc = pc.createDataChannel("oai-events");
+      dcRef.current = dc;
+
+      dc.onopen = () => {
+        ph("bereit");
+        // Lina soll sich sofort begrüßen
+        dc.send(JSON.stringify({ type: "response.create" }));
+      };
+
+      dc.onmessage = async (e) => {
+        let event: { type: string; [key: string]: unknown };
+        try { event = JSON.parse(e.data as string); } catch { return; }
+
+        switch (event.type) {
+          case "input_audio_buffer.speech_started":
+            ph("hoert");
+            break;
+
+          case "input_audio_buffer.speech_stopped":
+            ph("denkt");
+            break;
+
+          case "response.audio.delta":
+            if (phaseRef.current !== "redet") ph("redet");
+            break;
+
+          case "response.done":
+            // Nur zurück zu "bereit" wenn nicht gerade zuhört
+            if (phaseRef.current === "redet" || phaseRef.current === "denkt") {
+              ph("bereit");
+            }
+            break;
+
+          case "response.function_call_arguments.done": {
+            const callId = event.call_id as string;
+            const name = event.name as string;
+            if (name === "web_suche") {
+              await handleWebSuche(callId, event.arguments as string);
+            }
+            break;
+          }
+
+          case "error":
+            console.error("OpenAI Realtime Fehler:", event.error);
+            // Nicht die ganze UI mit Fehlern überhäufen – nur loggen
+            break;
+        }
+      };
+
+      dc.onclose = () => {
+        if (mountedRef.current && phaseRef.current !== "verbindet") {
+          ph("bereit");
+        }
+      };
+
+      // 6. SDP-Offer erstellen
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      // 7. Direkt mit OpenAI Realtime verbinden (Browser ↔ OpenAI)
+      const sdpRes = await fetch(OPENAI_REALTIME_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: msgs.current.slice(-12) }),
+        headers: {
+          Authorization: `Bearer ${ephemeralKey}`,
+          "Content-Type": "application/sdp",
+        },
+        body: offer.sdp,
       });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        setFehler(data.error ?? "Etwas hat nicht geklappt");
-        ph("start");
-        return;
+      if (!sdpRes.ok) {
+        const errTxt = await sdpRes.text();
+        throw new Error(`WebRTC SDP Fehler ${sdpRes.status}: ${errTxt}`);
       }
-      msgs.current = [...msgs.current, { role: "assistant", content: data.antwort }];
-      sprich(data.antwort);
-    } catch {
-      setFehler("Keine Verbindung");
-      ph("start");
+
+      const answerSdp = await sdpRes.text();
+      await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+
+    } catch (err) {
+      console.error("Verbindungsfehler:", err);
+      if (mountedRef.current) {
+        setFehler("Verbindung fehlgeschlagen – bitte neu versuchen");
+        ph("bereit");
+      }
     }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  /* ── Mikrofon starten ──────────────────────────────────────────────── */
-  function hoerZu() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any;
-    const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-    if (!SR) {
-      setFehler("Spracherkennung nicht verfügbar – bitte Chrome verwenden");
-      return;
-    }
-
-    try { (recEl.current as { stop?: () => void })?.stop?.(); } catch { /* ignore */ }
-
-    const r = new SR();
-    recEl.current = r;
-    r.lang = "de-DE";
-    r.continuous = false;
-    r.interimResults = false;
-
-    r.onstart = () => ph("hoert");
-    r.onend = () => { if (phaseRef.current === "hoert") ph("start"); };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    r.onerror = (e: any) => {
-      if (e.error !== "no-speech") setFehler("Mikrofon: " + e.error);
-      if (phaseRef.current === "hoert") ph("start");
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    r.onresult = (e: any) => sende(e.results[0][0].transcript);
-
-    try { r.start(); } catch { /* ignore */ }
-  }
-
-  /* ── Initialisierung ───────────────────────────────────────────────── */
   useEffect(() => {
-    audioEl.current = new Audio();
-    // Begrüßung sprechen → danach auto-Start Mikrofon
-    sprich(BEGRUESSUNG);
-
+    mountedRef.current = true;
+    verbinde();
     return () => {
-      try { (recEl.current as { stop?: () => void })?.stop?.(); } catch { /* ignore */ }
-      if (audioEl.current) {
-        audioEl.current.pause();
-        audioEl.current.src = "";
-      }
+      mountedRef.current = false;
+      trenne();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── UI ────────────────────────────────────────────────────────────── */
-  const statusText: Record<typeof phase, string> = {
-    start: "Tippe auf das Mikrofon zum Sprechen",
+  /* ── UI ──────────────────────────────────────────────────────────────── */
+  const statusText: Record<Phase, string> = {
+    verbindet: "Lina wird geweckt…",
+    bereit: "Einfach losreden – Lina hört zu!",
     hoert: "Ik höör di… snack mit mi!",
     denkt: "Lina denkt nach…",
     redet: "Lina snackt…",
   };
 
+  const redet = phase === "redet";
+  const hoert = phase === "hoert";
+
   return (
     <div
       className="flex flex-col items-center justify-center min-h-full gap-10 p-6"
-      style={{ background: "linear-gradient(180deg,#FDE8D0 0%,var(--farbe-warm-bg) 100%)" }}
+      style={{
+        background: "linear-gradient(180deg,#FDE8D0 0%,var(--farbe-warm-bg) 100%)",
+      }}
     >
-      {/* Avatar */}
+      {/* ── Avatar ── */}
       <div className="flex flex-col items-center gap-3">
         <div
           className="rounded-full p-8 transition-all duration-500"
           style={{
             background: "white",
-            boxShadow: phase === "hoert"
+            boxShadow: hoert
               ? "0 0 0 16px rgba(232,98,58,0.2), 0 0 0 32px rgba(232,98,58,0.08)"
-              : phase === "redet"
-              ? "0 0 0 12px rgba(193,112,58,0.15)"
+              : redet
+              ? "0 0 0 12px rgba(193,112,58,0.18), 0 0 0 24px rgba(193,112,58,0.07)"
               : "0 12px 40px rgba(61,43,31,0.15)",
           }}
         >
-          <LinaGesicht redet={phase === "redet"} hoert={phase === "hoert"} />
+          <LinaGesicht redet={redet} hoert={hoert} />
         </div>
-        <p className="text-3xl font-bold" style={{ color: "var(--farbe-warm-akzent)" }}>Lina</p>
+        <p className="text-3xl font-bold" style={{ color: "var(--farbe-warm-akzent)" }}>
+          Lina
+        </p>
         <p className="text-base" style={{ color: "var(--farbe-warm-text-weich)" }}>
           Plattdüütsche Gesprächspartnerin
         </p>
       </div>
 
-      {/* Status-Text */}
+      {/* ── Status-Text ── */}
       <div className="text-center px-6">
         <p className="text-xl" style={{ color: "var(--farbe-warm-text)" }}>
           {statusText[phase]}
         </p>
-        {fehler && <p className="text-red-600 text-base mt-2">{fehler}</p>}
+        {fehler && (
+          <div className="mt-4 flex flex-col items-center gap-3">
+            <p className="text-red-600 text-base">{fehler}</p>
+            <button
+              onClick={() => verbinde()}
+              className="px-8 py-4 rounded-2xl text-white text-lg font-bold transition-transform active:scale-95"
+              style={{
+                background: "var(--farbe-warm-akzent)",
+                minHeight: "64px",
+                boxShadow: "0 4px 16px rgba(193,112,58,0.4)",
+              }}
+            >
+              🔄 Neu verbinden
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Audio-Wellen beim Hören */}
-      {phase === "hoert" && (
+      {/* ── Verbindet-Spinner ── */}
+      {phase === "verbindet" && (
+        <div className="flex gap-3">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="rounded-full"
+              style={{
+                width: "18px",
+                height: "18px",
+                background: "var(--farbe-warm-akzent-hell)",
+                animation: `linahupf 0.6s ${i * 0.2}s ease-in-out infinite alternate`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* ── Hört zu – Wellen ── */}
+      {hoert && (
         <div className="flex gap-2 items-end" style={{ height: "60px" }}>
           {[3, 5, 8, 6, 4, 7, 5, 3, 6, 4].map((h, i) => (
             <div
@@ -225,7 +374,7 @@ export default function AvatarSeite() {
         </div>
       )}
 
-      {/* Denkt-Punkte */}
+      {/* ── Denkt – Punkte ── */}
       {phase === "denkt" && (
         <div className="flex gap-3">
           {[0, 1, 2].map((i) => (
@@ -233,7 +382,8 @@ export default function AvatarSeite() {
               key={i}
               className="rounded-full"
               style={{
-                width: "18px", height: "18px",
+                width: "18px",
+                height: "18px",
                 background: "var(--farbe-warm-akzent)",
                 animation: `linahupf 0.6s ${i * 0.2}s ease-in-out infinite alternate`,
               }}
@@ -242,27 +392,8 @@ export default function AvatarSeite() {
         </div>
       )}
 
-      {/* Mic-Button (idle) */}
-      {phase === "start" && (
-        <button
-          onClick={hoerZu}
-          className="rounded-full flex items-center justify-center transition-transform active:scale-95"
-          style={{
-            width: "120px", height: "120px",
-            background: "var(--farbe-warm-akzent)",
-            color: "white",
-            fontSize: "3rem",
-            border: "none",
-            boxShadow: "0 8px 28px rgba(193,112,58,0.5)",
-          }}
-          aria-label="Sprechen"
-        >
-          🎤
-        </button>
-      )}
-
-      {/* Redet-Indikator */}
-      {phase === "redet" && (
+      {/* ── Redet – Sprachbalken ── */}
+      {redet && (
         <div className="flex gap-2 items-end" style={{ height: "48px" }}>
           {[2, 4, 6, 8, 6, 4, 2].map((h, i) => (
             <div
@@ -280,14 +411,31 @@ export default function AvatarSeite() {
         </div>
       )}
 
+      {/* ── Bereit – sanfter Puls ── */}
+      {phase === "bereit" && !fehler && (
+        <div
+          className="rounded-full"
+          style={{
+            width: "20px",
+            height: "20px",
+            background: "var(--farbe-warm-akzent)",
+            animation: "linapuls 2.2s ease-in-out infinite",
+          }}
+        />
+      )}
+
       <style>{`
         @keyframes linawelle {
           from { transform: scaleY(0.4); opacity: 0.6; }
-          to   { transform: scaleY(1.6); opacity: 1; }
+          to   { transform: scaleY(1.6); opacity: 1;   }
         }
         @keyframes linahupf {
-          from { transform: translateY(0); opacity: 0.4; }
-          to   { transform: translateY(-14px); opacity: 1; }
+          from { transform: translateY(0);    opacity: 0.4; }
+          to   { transform: translateY(-14px); opacity: 1;   }
+        }
+        @keyframes linapuls {
+          0%, 100% { transform: scale(1);   opacity: 0.4; }
+          50%       { transform: scale(1.5); opacity: 0.85; }
         }
       `}</style>
     </div>
