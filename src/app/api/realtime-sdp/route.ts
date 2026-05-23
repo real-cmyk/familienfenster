@@ -88,7 +88,10 @@ Fotos: ${fotosText}
 
 HINWEISE: ${omaName} hat manchmal Zittern — warte geduldig. Nutze web_suche für aktuelle Infos. Starte mit herzlicher Begrüßung auf Plattdeutsch.`;
 
-  // ── Session-Konfiguration für GA Realtime API ──────────────────────────
+  // ── Session-Konfiguration für GA Realtime API (gpt-realtime-2) ────────
+  // Nur die von /v1/realtime/calls akzeptierten Felder.
+  // turn_detection, tools und tool_choice werden nach dem Verbinden
+  // per session.update über den Data-Channel konfiguriert.
   const sessionConfig = JSON.stringify({
     type: "realtime",
     model: "gpt-realtime-2",
@@ -96,27 +99,6 @@ HINWEISE: ${omaName} hat manchmal Zittern — warte geduldig. Nutze web_suche f�
     audio: {
       output: { voice: "shimmer" },
     },
-    turn_detection: {
-      type: "server_vad",
-      threshold: 0.4,
-      prefix_padding_ms: 300,
-      silence_duration_ms: 1500,
-    },
-    tools: [
-      {
-        type: "function",
-        name: "web_suche",
-        description: "Sucht im Internet nach aktuellen Informationen (Wetter, Nachrichten, Rezepte usw.)",
-        parameters: {
-          type: "object",
-          properties: {
-            suchbegriff: { type: "string", description: "Suchbegriff oder Frage" },
-          },
-          required: ["suchbegriff"],
-        },
-      },
-    ],
-    tool_choice: "auto",
   });
 
   // ── FormData an /v1/realtime/calls schicken ────────────────────────────

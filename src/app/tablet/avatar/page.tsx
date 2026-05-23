@@ -183,9 +183,36 @@ export default function AvatarSeite() {
         try { event = JSON.parse(e.data as string); } catch { return; }
 
         switch (event.type) {
-          // Session fertig konfiguriert → Begrüßung starten
+          // Session steht → VAD + Tools konfigurieren, dann Begrüßung
           case "session.created":
             if (dc.readyState === "open") {
+              // turn_detection + tools per Data-Channel nachladen
+              dc.send(JSON.stringify({
+                type: "session.update",
+                session: {
+                  turn_detection: {
+                    type: "server_vad",
+                    threshold: 0.4,
+                    prefix_padding_ms: 300,
+                    silence_duration_ms: 1500,
+                  },
+                  tools: [
+                    {
+                      type: "function",
+                      name: "web_suche",
+                      description: "Sucht im Internet nach aktuellen Informationen (Wetter, Nachrichten, Rezepte usw.)",
+                      parameters: {
+                        type: "object",
+                        properties: {
+                          suchbegriff: { type: "string", description: "Suchbegriff oder Frage" },
+                        },
+                        required: ["suchbegriff"],
+                      },
+                    },
+                  ],
+                  tool_choice: "auto",
+                },
+              }));
               dc.send(JSON.stringify({ type: "response.create" }));
             }
             break;
