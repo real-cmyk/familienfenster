@@ -183,19 +183,12 @@ export default function AvatarSeite() {
         try { event = JSON.parse(e.data as string); } catch { return; }
 
         switch (event.type) {
-          // Session steht → VAD + Tools konfigurieren, dann Begrüßung
+          // Session steht → Tools konfigurieren + Begrüßung starten
           case "session.created":
             if (dc.readyState === "open") {
-              // turn_detection + tools per Data-Channel nachladen
               dc.send(JSON.stringify({
                 type: "session.update",
                 session: {
-                  turn_detection: {
-                    type: "server_vad",
-                    threshold: 0.4,
-                    prefix_padding_ms: 300,
-                    silence_duration_ms: 1500,
-                  },
                   tools: [
                     {
                       type: "function",
@@ -217,6 +210,7 @@ export default function AvatarSeite() {
             }
             break;
 
+          // Nutzer spricht
           case "input_audio_buffer.speech_started":
             ph("hoert");
             break;
@@ -225,10 +219,13 @@ export default function AvatarSeite() {
             ph("denkt");
             break;
 
+          // Lina spricht (GA API: output_audio_buffer Events)
+          case "output_audio_buffer.started":
           case "response.audio.delta":
             if (phaseRef.current !== "redet") ph("redet");
             break;
 
+          case "output_audio_buffer.stopped":
           case "response.done":
             if (phaseRef.current === "redet" || phaseRef.current === "denkt") {
               ph("bereit");
