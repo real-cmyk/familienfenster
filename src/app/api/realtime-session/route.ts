@@ -192,15 +192,26 @@ WICHTIGE HINWEISE:
     });
 
     if (!sessionRes.ok) {
-      const err = await sessionRes.text();
-      console.error("OpenAI Realtime Session Fehler:", sessionRes.status, err);
-      return NextResponse.json({ error: "Session konnte nicht erstellt werden" }, { status: 502 });
+      const errText = await sessionRes.text().catch(() => "");
+      let errMsg: string;
+      try {
+        const errJson = JSON.parse(errText);
+        errMsg = errJson?.error?.message ?? errJson?.error ?? errText;
+      } catch {
+        errMsg = errText || `HTTP ${sessionRes.status}`;
+      }
+      console.error("OpenAI Realtime Session Fehler:", sessionRes.status, errText);
+      // Fehler direkt an den Client weitergeben für Diagnose
+      return NextResponse.json(
+        { error: `OpenAI ${sessionRes.status}: ${errMsg.slice(0, 300)}` },
+        { status: 502 }
+      );
     }
 
     const session = await sessionRes.json();
     return NextResponse.json(session);
   } catch (err) {
     console.error("Realtime Session Netzwerkfehler:", err);
-    return NextResponse.json({ error: "Verbindungsfehler" }, { status: 500 });
+    return NextResponse.json({ error: `Netzwerkfehler: ${(err as Error).message}` }, { status: 500 });
   }
 }
