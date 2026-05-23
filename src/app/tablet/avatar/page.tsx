@@ -183,12 +183,19 @@ export default function AvatarSeite() {
         try { event = JSON.parse(e.data as string); } catch { return; }
 
         switch (event.type) {
-          // Session steht → Tools konfigurieren + Begrüßung starten
+          // Session steht → Tools + VAD konfigurieren + Begrüßung starten
           case "session.created":
             if (dc.readyState === "open") {
               dc.send(JSON.stringify({
                 type: "session.update",
                 session: {
+                  // VAD: entspannte Einstellungen für ältere Nutzer mit ggf. Zittern
+                  turn_detection: {
+                    type: "server_vad",
+                    threshold: 0.4,
+                    prefix_padding_ms: 300,
+                    silence_duration_ms: 1500,
+                  },
                   tools: [
                     {
                       type: "function",
@@ -241,9 +248,19 @@ export default function AvatarSeite() {
             break;
           }
 
-          case "error":
-            console.error("Realtime Fehler:", (event.error as { message?: string })?.message ?? event.error);
+          case "session.updated":
+            // Session-Konfiguration bestätigt — kein Action nötig
             break;
+
+          case "error": {
+            const errMsg = (event.error as { message?: string; code?: string })?.message ?? String(event.error);
+            console.error("Realtime Fehler:", errMsg);
+            // Nur fatale Fehler anzeigen (nicht session.update-Warnungen)
+            if ((event.error as { code?: string })?.code !== "session_update_rejected") {
+              // Stille Fehler — nicht im UI zeigen, nur loggen
+            }
+            break;
+          }
         }
       };
 

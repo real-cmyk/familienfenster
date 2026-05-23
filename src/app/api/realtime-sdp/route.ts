@@ -93,7 +93,6 @@ HINWEISE: ${omaName} hat manchmal Zittern — warte geduldig. Nutze web_suche f�
   // turn_detection, tools und tool_choice werden nach dem Verbinden
   // per session.update über den Data-Channel konfiguriert.
   const sessionConfig = JSON.stringify({
-    type: "realtime",
     model: "gpt-realtime-2",
     instructions,
     audio: {
