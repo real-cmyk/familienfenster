@@ -8,6 +8,12 @@
     },
     "src/app/api/realtime-session/route.ts": {
       "maxDuration": 15
+    },
+    "src/app/api/realtime-config/route.ts": {
+      "maxDuration": 15
+    },
+    "src/app/api/realtime-sdp/route.ts": {
+      "maxDuration": 20
     }
   }
 }

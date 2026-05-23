@@ -84,9 +84,6 @@ function LinaGesicht({ redet, hoert }: { redet: boolean; hoert: boolean }) {
 /* ── Typen & Konstanten ──────────────────────────────────────────────────── */
 type Phase = "verbindet" | "bereit" | "hoert" | "denkt" | "redet";
 
-const REALTIME_MODEL = "gpt-4o-realtime-preview-2024-12-17";
-const OPENAI_REALTIME_URL = `https://api.openai.com/v1/realtime?model=${REALTIME_MODEL}`;
-
 /* ── Hauptseite ──────────────────────────────────────────────────────────── */
 export default function AvatarSeite() {
   const [phase, setPhase] = useState<Phase>("verbindet");
@@ -143,68 +140,71 @@ export default function AvatarSeite() {
     }
   }
 
-  /* ── WebRTC-Verbindung aufbauen ─────────────────────────────────────── */
+  /* ── WebRTC-Verbindung aufbauen (GA-API: SDP-Proxy über eigenen Server) ─ */
   const verbinde = useCallback(async () => {
     trenne();
     ph("verbindet");
     setFehler("");
 
     try {
-      // 1. Ephemeren Schlüssel von unserem Server holen
-      const sessionRes = await fetch("/api/realtime-session");
-      const sessionBody = await sessionRes.json();
-      if (!sessionRes.ok || sessionBody.error) {
-        throw new Error(`Session: ${sessionBody.error ?? sessionRes.status}`);
+      // 1. Config (Linas Instruktionen + Tools) + Mikrofon parallel laden
+      const [configRes, stream] = await Promise.all([
+        fetch("/api/realtime-config"),
+        navigator.mediaDevices.getUserMedia({ audio: true }).catch((e) => {
+          throw new Error(`Mikrofon: ${(e as Error).message}`);
+        }),
+      ]);
+
+      const config = await configRes.json();
+      if (!configRes.ok || config.error) {
+        throw new Error(`Config: ${config.error ?? configRes.status}`);
       }
 
-      const ephemeralKey: string = sessionBody.client_secret?.value;
-      if (!ephemeralKey) throw new Error("Kein Ephemeral-Key erhalten");
+      streamRef.current = stream;
 
-      // 2. RTCPeerConnection
+      // 2. RTCPeerConnection aufbauen
       const pc = new RTCPeerConnection();
       pcRef.current = pc;
 
-      // 3. Linas Stimme → <audio> Element
+      // Linas Audio-Ausgabe
       const audioEl = document.createElement("audio");
       audioEl.autoplay = true;
       document.body.appendChild(audioEl);
       pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
 
-      // 4. Mikrofon hinzufügen
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (micErr) {
-        throw new Error(`Mikrofon: ${(micErr as Error).message}`);
-      }
-      streamRef.current = stream;
+      // Mikrofon-Track einbinden
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
 
-      // 5. Data-Channel für Echtzeit-Events
+      // 3. Data-Channel für Events
       const dc = pc.createDataChannel("oai-events");
       dcRef.current = dc;
 
-      // Begrüßung wird ausgelöst sobald session.created eintrifft
-      let sessionBereit = false;
+      let konfiguriert = false;
 
-      dc.onopen = () => {
-        // Verbindung steht — auf session.created warten
-        ph("bereit");
-      };
+      dc.onopen = () => ph("bereit");
 
       dc.onmessage = async (e) => {
         let event: { type: string; [key: string]: unknown };
         try { event = JSON.parse(e.data as string); } catch { return; }
 
         switch (event.type) {
-          // Session vollständig initialisiert → Begrüßung starten
+          // Session steht → Lina konfigurieren und Begrüßung starten
           case "session.created":
-          case "session.updated":
-            if (!sessionBereit) {
-              sessionBereit = true;
-              if (dc.readyState === "open") {
-                dc.send(JSON.stringify({ type: "response.create" }));
-              }
+            if (!konfiguriert && dc.readyState === "open") {
+              konfiguriert = true;
+              // Instruktionen, Tools und VAD setzen
+              dc.send(JSON.stringify({
+                type: "session.update",
+                session: {
+                  instructions: config.instructions,
+                  voice: config.voice,
+                  turn_detection: config.turn_detection,
+                  tools: config.tools,
+                  tool_choice: "auto",
+                },
+              }));
+              // Begrüßung auslösen
+              dc.send(JSON.stringify({ type: "response.create" }));
             }
             break;
 
@@ -237,34 +237,29 @@ export default function AvatarSeite() {
 
           case "error": {
             const errEvt = event.error as { message?: string } | undefined;
-            console.error("OpenAI Realtime Fehler:", errEvt);
-            // Nicht-fatale Fehler: nur loggen, UI nicht zerstören
+            console.error("OpenAI Realtime Fehler:", errEvt?.message ?? event.error);
             break;
           }
         }
       };
 
       dc.onclose = () => {
-        if (mountedRef.current && phaseRef.current !== "verbindet") {
-          ph("bereit");
-        }
+        if (mountedRef.current && phaseRef.current !== "verbindet") ph("bereit");
       };
 
-      // 6. SDP-Offer erstellen und an OpenAI schicken
+      // 4. SDP-Offer erstellen
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      const sdpRes = await fetch(OPENAI_REALTIME_URL, {
+      // 5. SDP-Austausch über unseren Server (API-Key bleibt serverseitig)
+      const sdpRes = await fetch("/api/realtime-sdp", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${ephemeralKey}`,
-          "Content-Type": "application/sdp",
-        },
+        headers: { "Content-Type": "application/sdp" },
         body: offer.sdp,
       });
       if (!sdpRes.ok) {
-        const errTxt = await sdpRes.text().catch(() => sdpRes.status.toString());
-        throw new Error(`SDP ${sdpRes.status}: ${errTxt.slice(0, 120)}`);
+        const errBody = await sdpRes.json().catch(() => ({ error: sdpRes.status }));
+        throw new Error(`SDP: ${errBody.error ?? sdpRes.status}`);
       }
 
       const answerSdp = await sdpRes.text();
