@@ -152,26 +152,31 @@ export default function AvatarSeite() {
     try {
       // 1. Ephemeren Schlüssel von unserem Server holen
       const sessionRes = await fetch("/api/realtime-session");
-      if (!sessionRes.ok) throw new Error("Session-Fehler vom Server");
-      const session = await sessionRes.json();
-      if (session.error) throw new Error(session.error);
+      const sessionBody = await sessionRes.json();
+      if (!sessionRes.ok || sessionBody.error) {
+        throw new Error(`Session: ${sessionBody.error ?? sessionRes.status}`);
+      }
 
-      const ephemeralKey: string = session.client_secret?.value;
-      if (!ephemeralKey) throw new Error("Kein Schlüssel erhalten");
+      const ephemeralKey: string = sessionBody.client_secret?.value;
+      if (!ephemeralKey) throw new Error("Kein Ephemeral-Key erhalten");
 
       // 2. RTCPeerConnection
       const pc = new RTCPeerConnection();
       pcRef.current = pc;
 
-      // 3. Linas Stimme → <audio autoplay>
-      pc.ontrack = (e) => {
-        const audio = new Audio();
-        audio.autoplay = true;
-        audio.srcObject = e.streams[0];
-      };
+      // 3. Linas Stimme → <audio> Element
+      const audioEl = document.createElement("audio");
+      audioEl.autoplay = true;
+      document.body.appendChild(audioEl);
+      pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
 
       // 4. Mikrofon hinzufügen
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (micErr) {
+        throw new Error(`Mikrofon: ${(micErr as Error).message}`);
+      }
       streamRef.current = stream;
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
 
@@ -179,10 +184,12 @@ export default function AvatarSeite() {
       const dc = pc.createDataChannel("oai-events");
       dcRef.current = dc;
 
+      // Begrüßung wird ausgelöst sobald session.created eintrifft
+      let sessionBereit = false;
+
       dc.onopen = () => {
+        // Verbindung steht — auf session.created warten
         ph("bereit");
-        // Lina soll sich sofort begrüßen
-        dc.send(JSON.stringify({ type: "response.create" }));
       };
 
       dc.onmessage = async (e) => {
@@ -190,6 +197,17 @@ export default function AvatarSeite() {
         try { event = JSON.parse(e.data as string); } catch { return; }
 
         switch (event.type) {
+          // Session vollständig initialisiert → Begrüßung starten
+          case "session.created":
+          case "session.updated":
+            if (!sessionBereit) {
+              sessionBereit = true;
+              if (dc.readyState === "open") {
+                dc.send(JSON.stringify({ type: "response.create" }));
+              }
+            }
+            break;
+
           case "input_audio_buffer.speech_started":
             ph("hoert");
             break;
@@ -203,7 +221,6 @@ export default function AvatarSeite() {
             break;
 
           case "response.done":
-            // Nur zurück zu "bereit" wenn nicht gerade zuhört
             if (phaseRef.current === "redet" || phaseRef.current === "denkt") {
               ph("bereit");
             }
@@ -218,10 +235,12 @@ export default function AvatarSeite() {
             break;
           }
 
-          case "error":
-            console.error("OpenAI Realtime Fehler:", event.error);
-            // Nicht die ganze UI mit Fehlern überhäufen – nur loggen
+          case "error": {
+            const errEvt = event.error as { message?: string } | undefined;
+            console.error("OpenAI Realtime Fehler:", errEvt);
+            // Nicht-fatale Fehler: nur loggen, UI nicht zerstören
             break;
+          }
         }
       };
 
@@ -231,11 +250,10 @@ export default function AvatarSeite() {
         }
       };
 
-      // 6. SDP-Offer erstellen
+      // 6. SDP-Offer erstellen und an OpenAI schicken
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      // 7. Direkt mit OpenAI Realtime verbinden (Browser ↔ OpenAI)
       const sdpRes = await fetch(OPENAI_REALTIME_URL, {
         method: "POST",
         headers: {
@@ -245,8 +263,8 @@ export default function AvatarSeite() {
         body: offer.sdp,
       });
       if (!sdpRes.ok) {
-        const errTxt = await sdpRes.text();
-        throw new Error(`WebRTC SDP Fehler ${sdpRes.status}: ${errTxt}`);
+        const errTxt = await sdpRes.text().catch(() => sdpRes.status.toString());
+        throw new Error(`SDP ${sdpRes.status}: ${errTxt.slice(0, 120)}`);
       }
 
       const answerSdp = await sdpRes.text();
@@ -254,8 +272,9 @@ export default function AvatarSeite() {
 
     } catch (err) {
       console.error("Verbindungsfehler:", err);
+      trenne();
       if (mountedRef.current) {
-        setFehler("Verbindung fehlgeschlagen – bitte neu versuchen");
+        setFehler(String((err as Error).message ?? err));
         ph("bereit");
       }
     }
