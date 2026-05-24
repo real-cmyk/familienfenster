@@ -56,14 +56,14 @@ export const RADIO_SENDER = [
     backup: "https://st01.sslstream.dlf.de/dlf/01/64/mp3/stream.mp3",
   },
   {
-    id: "brheimat",
-    name: "BR Heimat",
+    id: "bay1",
+    name: "Bayern 1",
     region: "Volksmusik & Heimat",
     emoji: "🏔️",
     farbe: "#F3E5F5",
     rand: "#6A1B9A",
-    url: "https://dispatcher.rndfnk.com/br/brheimat/live/mp3/128/stream.mp3",
-    backup: "https://dispatcher.rndfnk.com/br/br2/live/mp3/128/stream.mp3",
+    url: "https://dispatcher.rndfnk.com/br/br1/obb/mp3/mid",
+    backup: "https://dispatcher.rndfnk.com/br/br1/franken/mp3/mid",
   },
   {
     id: "swr4",
