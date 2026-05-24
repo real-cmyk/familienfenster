@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getEigenePerson } from "@/lib/auth";
 import Link from "next/link";
+import Image from "next/image";
 
 export default async function FamilieLayout({ children }: { children: React.ReactNode }) {
   const person = await getEigenePerson();
@@ -23,9 +24,12 @@ export default async function FamilieLayout({ children }: { children: React.Reac
         className="sticky top-0 z-10 px-4 py-2 flex items-center justify-between border-b"
         style={{ background: "var(--farbe-hell-karte)", borderColor: "var(--farbe-warm-akzent-hell)" }}
       >
-        <span className="text-base font-bold" style={{ color: "var(--farbe-warm-akzent)" }}>
-          🪟 Familienfenster
-        </span>
+        <Link href="/familie" className="flex items-center gap-2">
+          <Image src="/logo.svg" alt="Familienfenster" width={32} height={32} />
+          <span className="text-lg font-bold" style={{ color: "var(--farbe-warm-akzent)", letterSpacing: "-0.01em" }}>
+            Familienfenster
+          </span>
+        </Link>
         <span
           className="text-sm px-3 py-1 rounded-full font-medium"
           style={{ background: "var(--farbe-warm-akzent-hell)", color: "var(--farbe-warm-akzent)" }}
