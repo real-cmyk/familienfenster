@@ -27,10 +27,10 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: "gpt-4o-mini-tts",
         input: text.slice(0, 4096),
-        voice: "fable",        // Warm, britisch, natürlich klingend
-        instructions: "Sprich warm, herzlich und natürlich – wie eine einfühlsame Freundin die mit einer älteren Dame plaudert. Normale Sprechgeschwindigkeit, mit echter Wärme in der Stimme. Keine steife Ansagerstimme.",
+        voice: "nova",
+        instructions: "Sprich warm, herzlich und natürlich – wie eine einfühlsame Freundin die mit einer älteren Dame plaudert. Mit echter Wärme in der Stimme. Keine steife Ansagerstimme.",
         response_format: "mp3",
-        speed: 1.0,
+        speed: 1.2,
       }),
     });
 
