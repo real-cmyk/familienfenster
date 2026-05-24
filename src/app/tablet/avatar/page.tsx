@@ -2,53 +2,30 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 
-/* ── SVG-Avatar ──────────────────────────────────────────────────────────
-   Augen-Fix: ry bleibt immer 9, Pupillen immer sichtbar → kein Augenrollen
-   ─────────────────────────────────────────────────────────────────────── */
+/* ── SVG-Avatar ──────────────────────────────────────────────────────────── */
 function LinaGesicht({ redet, hoert }: { redet: boolean; hoert: boolean }) {
   return (
-    <svg
-      viewBox="0 0 200 200"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ width: "160px", height: "160px" }}
-      aria-hidden="true"
-    >
-      {/* Schatten */}
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"
+      style={{ width: "160px", height: "160px" }} aria-hidden="true">
       <ellipse cx="102" cy="192" rx="55" ry="8" fill="rgba(0,0,0,0.10)" />
-      {/* Gesicht */}
       <circle cx="100" cy="95" r="74" fill="#F5C5A0" />
-      {/* Haare */}
       <ellipse cx="100" cy="30" rx="72" ry="34" fill="#B8B8B8" />
       <ellipse cx="35" cy="64" rx="21" ry="38" fill="#B8B8B8" />
       <ellipse cx="165" cy="64" rx="21" ry="38" fill="#B8B8B8" />
-      {/* Wangen */}
       <ellipse cx="62" cy="114" rx="17" ry="11" fill="rgba(220,90,70,0.22)" />
       <ellipse cx="138" cy="114" rx="17" ry="11" fill="rgba(220,90,70,0.22)" />
-      {/* Augen – ry immer 9, Pupillen immer sichtbar */}
+      {/* Augen – immer offen */}
       <ellipse cx="76" cy="90" rx="11" ry="9" fill="white" />
       <ellipse cx="124" cy="90" rx="11" ry="9" fill="white" />
       <circle cx="78" cy="91" r="6" fill="#5D4037" />
       <circle cx="126" cy="91" r="6" fill="#5D4037" />
       <circle cx="80" cy="89" r="2" fill="white" />
       <circle cx="128" cy="89" r="2" fill="white" />
-      {/* Augenbrauen – beim Reden leicht angehoben (freudiges Gesicht) */}
-      <path
-        d={redet ? "M65 75 Q76 70 87 75" : "M65 78 Q76 73 87 78"}
-        fill="none"
-        stroke="#8D6E63"
-        strokeWidth="3"
-        strokeLinecap="round"
-        style={{ transition: "d 0.3s" }}
-      />
-      <path
-        d={redet ? "M113 75 Q124 70 135 75" : "M113 78 Q124 73 135 78"}
-        fill="none"
-        stroke="#8D6E63"
-        strokeWidth="3"
-        strokeLinecap="round"
-        style={{ transition: "d 0.3s" }}
-      />
-      {/* Nase */}
+      {/* Augenbrauen – angehoben beim Reden */}
+      <path d={redet ? "M65 75 Q76 70 87 75" : "M65 78 Q76 73 87 78"}
+        fill="none" stroke="#8D6E63" strokeWidth="3" strokeLinecap="round" />
+      <path d={redet ? "M113 75 Q124 70 135 75" : "M113 78 Q124 73 135 78"}
+        fill="none" stroke="#8D6E63" strokeWidth="3" strokeLinecap="round" />
       <ellipse cx="100" cy="108" rx="7" ry="5" fill="#E8A070" />
       {/* Mund */}
       {redet ? (
@@ -58,42 +35,35 @@ function LinaGesicht({ redet, hoert }: { redet: boolean; hoert: boolean }) {
           <ellipse cx="100" cy="127" rx="18" ry="5" fill="#F5C5A0" />
         </>
       ) : hoert ? (
-        <path
-          d="M85 128 Q100 134 115 128"
-          fill="none"
-          stroke="#C0392B"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-        />
+        <path d="M85 128 Q100 134 115 128" fill="none" stroke="#C0392B" strokeWidth="3.5" strokeLinecap="round" />
       ) : (
-        <path
-          d="M82 128 Q100 140 118 128"
-          fill="none"
-          stroke="#C0392B"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-        />
+        <path d="M82 128 Q100 140 118 128" fill="none" stroke="#C0392B" strokeWidth="3.5" strokeLinecap="round" />
       )}
-      {/* Ohrringe */}
       <circle cx="26" cy="100" r="5" fill="#C1703A" />
       <circle cx="174" cy="100" r="5" fill="#C1703A" />
     </svg>
   );
 }
 
-/* ── Typen & Konstanten ──────────────────────────────────────────────────── */
-type Phase = "verbindet" | "bereit" | "hoert" | "denkt" | "redet";
+/* ── Typen ───────────────────────────────────────────────────────────────── */
+type Phase = "laden" | "bereit" | "hoert" | "denkt" | "redet";
+type Message = { role: "user" | "assistant"; content: string };
 
 /* ── Hauptseite ──────────────────────────────────────────────────────────── */
 export default function AvatarSeite() {
-  const [phase, setPhase] = useState<Phase>("verbindet");
+  const [phase, setPhase] = useState<Phase>("laden");
   const [fehler, setFehler] = useState("");
+  const [verlauf, setVerlauf] = useState<Message[]>([]);
+  const [linaText, setLinaText] = useState("");
+  const [sprachtext, setSprachtext] = useState("");
 
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const dcRef = useRef<RTCDataChannel | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const phaseRef = useRef<Phase>("verbindet");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const phaseRef = useRef<Phase>("laden");
   const mountedRef = useRef(true);
+  const aufnahmeAktivRef = useRef(false);
+  const verlaufRef = useRef<Message[]>([]);
 
   function ph(p: Phase) {
     if (!mountedRef.current) return;
@@ -101,236 +71,192 @@ export default function AvatarSeite() {
     setPhase(p);
   }
 
-  /* ── Aufräumen ──────────────────────────────────────────────────────── */
-  function trenne() {
-    try { streamRef.current?.getTracks().forEach((t) => t.stop()); } catch { /**/ }
-    try { dcRef.current?.close(); } catch { /**/ }
-    try { pcRef.current?.close(); } catch { /**/ }
-    streamRef.current = null;
-    dcRef.current = null;
-    pcRef.current = null;
+  // Verlauf-Ref synchron halten
+  useEffect(() => { verlaufRef.current = verlauf; }, [verlauf]);
+
+  /* ── Audio stoppen ──────────────────────────────────────────────────── */
+  function stoppeAudio() {
+    try { audioRef.current?.pause(); } catch { /**/ }
+    audioRef.current = null;
   }
 
-  /* ── Web-Suche Tool-Call verarbeiten ────────────────────────────────── */
-  async function handleWebSuche(callId: string, argsJson: string) {
+  /* ── Linas Antwort abspielen ────────────────────────────────────────── */
+  async function spieleAntwort(text: string, neuerVerlauf: Message[]) {
+    ph("redet");
+    setLinaText(text);
+    setVerlauf(neuerVerlauf);
+
     try {
-      const { suchbegriff } = JSON.parse(argsJson);
-      const res = await fetch("/api/web-search", {
+      const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ suchbegriff }),
+        body: JSON.stringify({ text }),
       });
-      const { ergebnis } = await res.json();
 
-      if (dcRef.current?.readyState === "open") {
-        dcRef.current.send(
-          JSON.stringify({
-            type: "conversation.item.create",
-            item: {
-              type: "function_call_output",
-              call_id: callId,
-              output: ergebnis ?? "Keine Ergebnisse gefunden.",
-            },
-          })
-        );
-        dcRef.current.send(JSON.stringify({ type: "response.create" }));
-      }
+      if (!res.ok) throw new Error(`TTS ${res.status}`);
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        if (mountedRef.current) ph("bereit");
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        if (mountedRef.current) ph("bereit");
+      };
+
+      await audio.play();
     } catch (err) {
-      console.error("Web-Suche Fehler:", err);
+      console.error("TTS Fehler:", err);
+      if (mountedRef.current) ph("bereit");
     }
   }
 
-  /* ── WebRTC-Verbindung aufbauen (GA Unified Interface) ─────────────────
-     SDP-Offer → /api/realtime-sdp (unser Server) → /v1/realtime/calls
-     Linas Instruktionen + App-Kontext gehen serverseitig mit in den Request
-     ─────────────────────────────────────────────────────────────────────── */
-  const verbinde = useCallback(async () => {
-    trenne();
-    ph("verbindet");
-    setFehler("");
-
+  /* ── Begrüßung beim Start ───────────────────────────────────────────── */
+  const begruessung = useCallback(async () => {
+    ph("denkt");
     try {
-      // 1. Mikrofon anfordern
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (e) {
-        throw new Error(`Mikrofon: ${(e as Error).message}`);
-      }
-      streamRef.current = stream;
-
-      // 2. RTCPeerConnection
-      const pc = new RTCPeerConnection();
-      pcRef.current = pc;
-
-      // Linas Audio-Ausgabe
-      const audioEl = document.createElement("audio");
-      audioEl.autoplay = true;
-      document.body.appendChild(audioEl);
-      pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
-
-      // Mikrofon-Track
-      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
-
-      // 3. Data-Channel
-      const dc = pc.createDataChannel("oai-events");
-      dcRef.current = dc;
-
-      dc.onopen = () => ph("bereit");
-
-      dc.onmessage = async (e) => {
-        let event: { type: string; [key: string]: unknown };
-        try { event = JSON.parse(e.data as string); } catch { return; }
-
-        switch (event.type) {
-          // Session steht → Tools + VAD konfigurieren + Begrüßung starten
-          case "session.created":
-            if (dc.readyState === "open") {
-              dc.send(JSON.stringify({
-                type: "session.update",
-                session: {
-                  // VAD: robuste Einstellungen — hoher Threshold ignoriert Umgebungsgeräusche,
-                  // lange Stille-Pause verhindert Abbrechen mitten im Satz
-                  turn_detection: {
-                    type: "server_vad",
-                    threshold: 0.7,
-                    prefix_padding_ms: 400,
-                    silence_duration_ms: 2200,
-                  },
-                  tools: [
-                    {
-                      type: "function",
-                      name: "web_suche",
-                      description: "Sucht im Internet nach aktuellen Informationen (Wetter, Nachrichten, Rezepte usw.)",
-                      parameters: {
-                        type: "object",
-                        properties: {
-                          suchbegriff: { type: "string", description: "Suchbegriff oder Frage" },
-                        },
-                        required: ["suchbegriff"],
-                      },
-                    },
-                  ],
-                  tool_choice: "auto",
-                },
-              }));
-              dc.send(JSON.stringify({ type: "response.create" }));
-            }
-            break;
-
-          // Nutzer spricht
-          case "input_audio_buffer.speech_started":
-            ph("hoert");
-            break;
-
-          case "input_audio_buffer.speech_stopped":
-            ph("denkt");
-            break;
-
-          // Lina spricht (GA API: output_audio_buffer Events)
-          case "output_audio_buffer.started":
-          case "response.audio.delta":
-            if (phaseRef.current !== "redet") ph("redet");
-            break;
-
-          case "output_audio_buffer.stopped":
-          case "response.done":
-            if (phaseRef.current === "redet" || phaseRef.current === "denkt") {
-              ph("bereit");
-            }
-            break;
-
-          case "response.function_call_arguments.done": {
-            const callId = event.call_id as string;
-            const name = event.name as string;
-            if (name === "web_suche") {
-              await handleWebSuche(callId, event.arguments as string);
-            }
-            break;
-          }
-
-          case "session.updated":
-            // Session-Konfiguration bestätigt — kein Action nötig
-            break;
-
-          case "error": {
-            const errMsg = (event.error as { message?: string; code?: string })?.message ?? String(event.error);
-            console.error("Realtime Fehler:", errMsg);
-            // Nur fatale Fehler anzeigen (nicht session.update-Warnungen)
-            if ((event.error as { code?: string })?.code !== "session_update_rejected") {
-              // Stille Fehler — nicht im UI zeigen, nur loggen
-            }
-            break;
-          }
-        }
-      };
-
-      dc.onclose = () => {
-        if (mountedRef.current && phaseRef.current !== "verbindet") ph("bereit");
-      };
-
-      // 4. SDP-Offer erstellen
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      // 5. SDP an unseren Server → OpenAI /v1/realtime/calls
-      //    Linas Instruktionen + App-Kontext werden serverseitig mit eingebettet
-      const sdpRes = await fetch("/api/realtime-sdp", {
+      const res = await fetch("/api/lina-chat", {
         method: "POST",
-        headers: { "Content-Type": "application/sdp" },
-        body: offer.sdp,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [] }), // Leerer Verlauf → Lina begrüßt
       });
+      if (!res.ok) throw new Error(`Chat ${res.status}`);
+      const { antwort } = await res.json();
 
-      if (!sdpRes.ok) {
-        const errBody = await sdpRes.json().catch(() => ({ error: sdpRes.status }));
-        throw new Error(errBody.error ?? `SDP-Fehler ${sdpRes.status}`);
-      }
-
-      const answerSdp = await sdpRes.text();
-      await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
-
+      const neuerVerlauf: Message[] = [{ role: "assistant", content: antwort }];
+      await spieleAntwort(antwort, neuerVerlauf);
     } catch (err) {
-      console.error("Verbindungsfehler:", err);
-      trenne();
-      if (mountedRef.current) {
-        setFehler(String((err as Error).message ?? err));
-        ph("bereit");
-      }
+      console.error("Begrüßungsfehler:", err);
+      setFehler("Lina konnte nicht gestartet werden.");
+      ph("bereit");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     mountedRef.current = true;
-    verbinde();
+    begruessung();
     return () => {
       mountedRef.current = false;
-      trenne();
+      stoppeAudio();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── UI ──────────────────────────────────────────────────────────────── */
-  const statusText: Record<Phase, string> = {
-    verbindet: "Lina wird geweckt…",
-    bereit: "Einfach losreden – Lina hört zu!",
-    hoert: "Ik höör di… snack mit mi!",
-    denkt: "Lina denkt nach…",
-    redet: "Lina snackt…",
-  };
+  /* ── Aufnahme starten ───────────────────────────────────────────────── */
+  async function startAufnahme() {
+    if (aufnahmeAktivRef.current) return;
+    if (phaseRef.current === "redet") stoppeAudio();
 
+    setFehler("");
+    ph("hoert");
+    aufnahmeAktivRef.current = true;
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      setFehler("Mikrofon nicht verfügbar.");
+      ph("bereit");
+      aufnahmeAktivRef.current = false;
+      return;
+    }
+
+    chunksRef.current = [];
+    const mr = new MediaRecorder(stream);
+    mr.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data);
+    };
+    mr.start(100); // Alle 100ms ein Chunk → smooth
+    mediaRecorderRef.current = mr;
+  }
+
+  /* ── Aufnahme stoppen und verarbeiten ───────────────────────────────── */
+  async function stopAufnahme() {
+    if (!aufnahmeAktivRef.current) return;
+    aufnahmeAktivRef.current = false;
+
+    const mr = mediaRecorderRef.current;
+    if (!mr || mr.state === "inactive") { ph("bereit"); return; }
+
+    ph("denkt");
+
+    // Auf onstop warten um alle Chunks zu sammeln
+    const audioBlob = await new Promise<Blob>((resolve) => {
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
+        resolve(blob);
+      };
+      mr.stop();
+      mr.stream.getTracks().forEach((t) => t.stop());
+    });
+
+    if (audioBlob.size < 200) {
+      // Zu kurz — ignorieren
+      ph("bereit");
+      return;
+    }
+
+    try {
+      // 1. Transkribieren
+      const fd = new FormData();
+      fd.append("audio", audioBlob, "audio.webm");
+      const trRes = await fetch("/api/transcribe", { method: "POST", body: fd });
+      if (!trRes.ok) throw new Error(`Transkription ${trRes.status}`);
+      const { text } = await trRes.json();
+
+      if (!text?.trim()) {
+        // Nichts verstanden — freundlich nachfragen
+        await spieleAntwort("Dat heff ik leider nicht verstahn. Snack noch mal!", verlaufRef.current);
+        return;
+      }
+
+      setSprachtext(text);
+
+      // 2. Chat
+      const neuerVerlauf: Message[] = [
+        ...verlaufRef.current,
+        { role: "user", content: text },
+      ];
+      const crRes = await fetch("/api/lina-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: neuerVerlauf.slice(-12) }),
+      });
+      if (!crRes.ok) throw new Error(`Chat ${crRes.status}`);
+      const { antwort } = await crRes.json();
+
+      // 3. TTS + Abspielen
+      await spieleAntwort(antwort, [
+        ...neuerVerlauf,
+        { role: "assistant", content: antwort },
+      ]);
+    } catch (err) {
+      console.error("Verarbeitungsfehler:", err);
+      setFehler("Etwas ist schiefgelaufen. Bitte nochmal versuchen.");
+      ph("bereit");
+    }
+  }
+
+  /* ── UI ──────────────────────────────────────────────────────────────── */
   const redet = phase === "redet";
   const hoert = phase === "hoert";
+  const bereit = phase === "bereit";
+  const denkt = phase === "denkt";
+  const laden = phase === "laden";
 
   return (
     <div
-      className="flex flex-col items-center justify-center min-h-full gap-10 p-6"
-      style={{
-        background: "linear-gradient(180deg,#FDE8D0 0%,var(--farbe-warm-bg) 100%)",
-      }}
+      className="flex flex-col items-center justify-between min-h-full p-6 gap-6"
+      style={{ background: "linear-gradient(180deg,#FDE8D0 0%,var(--farbe-warm-bg) 100%)" }}
     >
       {/* ── Avatar ── */}
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-3 pt-4">
         <div
           className="rounded-full p-8 transition-all duration-500"
           style={{
@@ -344,123 +270,122 @@ export default function AvatarSeite() {
         >
           <LinaGesicht redet={redet} hoert={hoert} />
         </div>
-        <p className="text-3xl font-bold" style={{ color: "var(--farbe-warm-akzent)" }}>
-          Lina
-        </p>
+        <p className="text-3xl font-bold" style={{ color: "var(--farbe-warm-akzent)" }}>Lina</p>
         <p className="text-base" style={{ color: "var(--farbe-warm-text-weich)" }}>
           Plattdüütsche Gesprächspartnerin
         </p>
       </div>
 
-      {/* ── Status-Text ── */}
-      <div className="text-center px-6">
-        <p className="text-xl" style={{ color: "var(--farbe-warm-text)" }}>
-          {statusText[phase]}
-        </p>
-        {fehler && (
-          <div className="mt-4 flex flex-col items-center gap-3">
-            <p className="text-red-600 text-base">{fehler}</p>
-            <button
-              onClick={() => verbinde()}
-              className="px-8 py-4 rounded-2xl text-white text-lg font-bold transition-transform active:scale-95"
-              style={{
+      {/* ── Linas Text ── */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center max-w-lg w-full">
+        {linaText ? (
+          <p
+            className="text-xl leading-relaxed"
+            style={{ color: "var(--farbe-warm-text)" }}
+          >
+            {linaText}
+          </p>
+        ) : laden || denkt ? (
+          <p className="text-lg" style={{ color: "var(--farbe-warm-text-weich)" }}>
+            {laden ? "Lina wird geweckt…" : "Lina denkt nach…"}
+          </p>
+        ) : null}
+
+        {/* Gesprochener Text des Nutzers */}
+        {sprachtext && !hoert && (
+          <p className="text-base italic" style={{ color: "var(--farbe-warm-text-weich)", opacity: 0.7 }}>
+            „{sprachtext}"
+          </p>
+        )}
+
+        {/* Lade-/Denk-Animation */}
+        {(laden || denkt) && (
+          <div className="flex gap-3 mt-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="rounded-full" style={{
+                width: "14px", height: "14px",
                 background: "var(--farbe-warm-akzent)",
-                minHeight: "64px",
-                boxShadow: "0 4px 16px rgba(193,112,58,0.4)",
-              }}
-            >
-              🔄 Neu verbinden
-            </button>
+                animation: `linahupf 0.6s ${i * 0.2}s ease-in-out infinite alternate`,
+              }} />
+            ))}
           </div>
         )}
-      </div>
 
-      {/* ── Verbindet-Spinner ── */}
-      {phase === "verbindet" && (
-        <div className="flex gap-3">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="rounded-full"
-              style={{
-                width: "18px",
-                height: "18px",
-                background: "var(--farbe-warm-akzent-hell)",
-                animation: `linahupf 0.6s ${i * 0.2}s ease-in-out infinite alternate`,
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* ── Hört zu – Wellen ── */}
-      {hoert && (
-        <div className="flex gap-2 items-end" style={{ height: "60px" }}>
-          {[3, 5, 8, 6, 4, 7, 5, 3, 6, 4].map((h, i) => (
-            <div
-              key={i}
-              className="rounded-full"
-              style={{
-                width: "8px",
-                background: "var(--farbe-warm-akzent)",
+        {/* Hört-Wellen */}
+        {hoert && (
+          <div className="flex gap-2 items-end mt-2" style={{ height: "56px" }}>
+            {[3, 5, 8, 6, 4, 7, 5, 3, 6, 4].map((h, i) => (
+              <div key={i} className="rounded-full" style={{
+                width: "8px", background: "var(--farbe-warm-akzent)",
                 height: `${h * 6}px`,
                 animation: `linawelle ${0.5 + i * 0.08}s ease-in-out infinite alternate`,
                 animationDelay: `${i * 0.07}s`,
-              }}
-            />
-          ))}
-        </div>
-      )}
+              }} />
+            ))}
+          </div>
+        )}
 
-      {/* ── Denkt – Punkte ── */}
-      {phase === "denkt" && (
-        <div className="flex gap-3">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="rounded-full"
-              style={{
-                width: "18px",
-                height: "18px",
-                background: "var(--farbe-warm-akzent)",
-                animation: `linahupf 0.6s ${i * 0.2}s ease-in-out infinite alternate`,
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* ── Redet – Sprachbalken ── */}
-      {redet && (
-        <div className="flex gap-2 items-end" style={{ height: "48px" }}>
-          {[2, 4, 6, 8, 6, 4, 2].map((h, i) => (
-            <div
-              key={i}
-              className="rounded-full"
-              style={{
-                width: "10px",
-                background: "#E8623A",
+        {/* Sprachbalken beim Reden */}
+        {redet && (
+          <div className="flex gap-2 items-end mt-2" style={{ height: "48px" }}>
+            {[2, 4, 6, 8, 6, 4, 2].map((h, i) => (
+              <div key={i} className="rounded-full" style={{
+                width: "10px", background: "#E8623A",
                 height: `${h * 5}px`,
                 animation: `linawelle ${0.4 + i * 0.06}s ease-in-out infinite alternate`,
                 animationDelay: `${i * 0.05}s`,
-              }}
-            />
-          ))}
-        </div>
-      )}
+              }} />
+            ))}
+          </div>
+        )}
 
-      {/* ── Bereit – sanfter Puls ── */}
-      {phase === "bereit" && !fehler && (
-        <div
-          className="rounded-full"
-          style={{
-            width: "20px",
-            height: "20px",
-            background: "var(--farbe-warm-akzent)",
-            animation: "linapuls 2.2s ease-in-out infinite",
-          }}
-        />
-      )}
+        {/* Fehler */}
+        {fehler && (
+          <p className="text-red-600 text-base mt-2">{fehler}</p>
+        )}
+      </div>
+
+      {/* ── Push-to-Talk Button ── */}
+      <div className="w-full max-w-sm pb-4">
+        {bereit || hoert ? (
+          <button
+            onMouseDown={startAufnahme}
+            onMouseUp={stopAufnahme}
+            onMouseLeave={() => { if (aufnahmeAktivRef.current) stopAufnahme(); }}
+            onTouchStart={(e) => { e.preventDefault(); startAufnahme(); }}
+            onTouchEnd={(e) => { e.preventDefault(); stopAufnahme(); }}
+            onContextMenu={(e) => e.preventDefault()}
+            className="w-full rounded-3xl text-white font-bold text-2xl transition-all duration-150 select-none"
+            style={{
+              minHeight: "100px",
+              background: hoert
+                ? "linear-gradient(135deg,#E8623A,#C1703A)"
+                : "linear-gradient(135deg,#C1703A,#A05828)",
+              boxShadow: hoert
+                ? "0 0 0 8px rgba(232,98,58,0.25), 0 8px 24px rgba(193,112,58,0.5)"
+                : "0 8px 24px rgba(193,112,58,0.4)",
+              transform: hoert ? "scale(1.04)" : "scale(1)",
+              userSelect: "none",
+              WebkitUserSelect: "none",
+            }}
+            aria-label={hoert ? "Aufnahme läuft — loslassen zum Senden" : "Drücken und halten zum Sprechen"}
+          >
+            {hoert ? "🎙 Loslassen zum Senden" : "🎙 Drücken und reden"}
+          </button>
+        ) : (
+          /* Während Denken/Laden/Reden: Button ausgegraut */
+          <div
+            className="w-full rounded-3xl text-white font-bold text-2xl flex items-center justify-center"
+            style={{
+              minHeight: "100px",
+              background: "rgba(193,112,58,0.3)",
+              color: "rgba(255,255,255,0.6)",
+            }}
+          >
+            {redet ? "🔊 Lina spricht…" : "⏳ Bitte warten…"}
+          </div>
+        )}
+      </div>
 
       <style>{`
         @keyframes linawelle {
@@ -468,12 +393,8 @@ export default function AvatarSeite() {
           to   { transform: scaleY(1.6); opacity: 1;   }
         }
         @keyframes linahupf {
-          from { transform: translateY(0);    opacity: 0.4; }
-          to   { transform: translateY(-14px); opacity: 1;   }
-        }
-        @keyframes linapuls {
-          0%, 100% { transform: scale(1);   opacity: 0.4; }
-          50%       { transform: scale(1.5); opacity: 0.85; }
+          from { transform: translateY(0);     opacity: 0.4; }
+          to   { transform: translateY(-12px); opacity: 1;   }
         }
       `}</style>
     </div>

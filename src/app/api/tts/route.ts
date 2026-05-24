@@ -25,11 +25,11 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "tts-1-hd",     // Höchste Qualität
+        model: "tts-1",        // Günstig ($15/1M chars vs $30 bei hd) – für Lina ausreichend
         input: text.slice(0, 4096),
         voice: "shimmer",      // Sanft, warm, weiblich – passt zu Lina
         response_format: "mp3",
-        speed: 0.92,
+        speed: 0.9,            // Etwas langsamer für ältere Nutzer
       }),
     });
 
