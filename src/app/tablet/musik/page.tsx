@@ -130,6 +130,23 @@ export default function MusikSeite() {
       .then(({ data }) => setPlaylists(data ?? []));
   }, []);
 
+  /* ── Cleanup beim Verlassen der Seite ───────────────────────────────── */
+  useEffect(() => {
+    return () => {
+      // Radio-Stream stoppen (new Audio() bleibt sonst im Speicher aktiv)
+      if (radioRef.current) {
+        radioRef.current.pause();
+        radioRef.current.src = "";
+        radioRef.current = null;
+      }
+      // Playlist-Audio stoppen
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+    };
+  }, []);
+
   /* ── Lautstärke ──────────────────────────────────────────────────────── */
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = lautstaerke;
