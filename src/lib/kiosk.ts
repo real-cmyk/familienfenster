@@ -17,9 +17,22 @@ export async function aktiviereWakeLock(): Promise<void> {
 }
 
 export function aktiviereKioskMode(): void {
-  // Verhindert Back-Navigation aus der Kiosk-Ansicht
-  history.pushState(null, "", location.href);
+  // Baut einen tiefen Fake-History-Puffer auf, damit der Android-Zurück-Button
+  // niemals echte Browser-History-Einträge außerhalb von /tablet erreicht.
+  // Jedes popstate füllt den Puffer sofort wieder auf — er kann nicht erschöpft werden.
+  const PUFFER = 10;
+  const fuellePuffer = () => {
+    for (let i = 0; i < PUFFER; i++) {
+      history.pushState(null, "", "/tablet");
+    }
+  };
+
+  // Ersten Puffer befüllen (überschreibt auch alle echten Einträge davor)
+  history.replaceState(null, "", "/tablet");
+  fuellePuffer();
+
   window.addEventListener("popstate", () => {
-    history.pushState(null, "", location.href);
+    // Nach jedem Zurück-Schritt sofort wieder auffüllen
+    fuellePuffer();
   });
 }
