@@ -94,7 +94,7 @@ HINWEISE: ${omaName} hat manchmal Zittern — warte geduldig. Nutze web_suche f�
   // per session.update über den Data-Channel konfiguriert.
   const sessionConfig = JSON.stringify({
     type: "realtime",        // Pflichtfeld laut /v1/realtime/calls API
-    model: "gpt-realtime-2",
+    model: "gpt-realtime-1.5",
     instructions,
     audio: {
       output: { voice: "shimmer" },

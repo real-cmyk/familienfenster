@@ -189,12 +189,13 @@ export default function AvatarSeite() {
               dc.send(JSON.stringify({
                 type: "session.update",
                 session: {
-                  // VAD: entspannte Einstellungen für ältere Nutzer mit ggf. Zittern
+                  // VAD: robuste Einstellungen — hoher Threshold ignoriert Umgebungsgeräusche,
+                  // lange Stille-Pause verhindert Abbrechen mitten im Satz
                   turn_detection: {
                     type: "server_vad",
-                    threshold: 0.4,
-                    prefix_padding_ms: 300,
-                    silence_duration_ms: 1500,
+                    threshold: 0.7,
+                    prefix_padding_ms: 400,
+                    silence_duration_ms: 2200,
                   },
                   tools: [
                     {
