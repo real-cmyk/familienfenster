@@ -102,11 +102,13 @@ export default function AvatarSeite() {
 
       audio.onended = () => {
         URL.revokeObjectURL(url);
-        if (mountedRef.current) ph("bereit");
+        // 800ms Cooldown: verhindert dass Linas Stimme noch im Raum nachhallt
+        // und sofort als nächste Aufnahme aufgenommen wird
+        setTimeout(() => { if (mountedRef.current) ph("bereit"); }, 800);
       };
       audio.onerror = () => {
         URL.revokeObjectURL(url);
-        if (mountedRef.current) ph("bereit");
+        setTimeout(() => { if (mountedRef.current) ph("bereit"); }, 300);
       };
 
       await audio.play();
@@ -159,7 +161,13 @@ export default function AvatarSeite() {
 
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,   // Linas Stimme aus Lautsprecher nicht aufnehmen
+          noiseSuppression: true,   // Hintergrundgeräusche dämpfen
+          autoGainControl: true,    // Lautstärke automatisch anpassen
+        },
+      });
     } catch (e) {
       setFehler("Mikrofon nicht verfügbar.");
       ph("bereit");
@@ -196,8 +204,8 @@ export default function AvatarSeite() {
       mr.stream.getTracks().forEach((t) => t.stop());
     });
 
-    if (audioBlob.size < 200) {
-      // Zu kurz — ignorieren
+    if (audioBlob.size < 800) {
+      // Zu kurz (versehentliche Berührung) — ignorieren
       ph("bereit");
       return;
     }
