@@ -12,8 +12,8 @@ export const RADIO_SENDER = [
     emoji: "🌊",
     farbe: "#E8F4FD",
     rand: "#2196F3",
-    url: "https://ndr-ndr1wellenord-kiel.cast.addradio.de/ndr/ndr1wellenord/kiel/mp3/128/stream.mp3",
-    backup: "https://ndr-ndr1wellenord.cast.addradio.de/ndr/ndr1wellenord/live/mp3/128/stream.mp3",
+    url: "https://icecast.ndr.de/ndr/ndr1wellenord/kiel/mp3/128/stream.mp3",
+    backup: "https://icecast.ndr.de/ndr/ndr1niedersachsen/hannover/mp3/128/stream.mp3",
   },
   {
     id: "ndr2",
@@ -22,8 +22,8 @@ export const RADIO_SENDER = [
     emoji: "🎵",
     farbe: "#EDE7F6",
     rand: "#7B1FA2",
-    url: "https://ndr-ndr2.cast.addradio.de/ndr/ndr2/live/mp3/128/stream.mp3",
-    backup: "https://ndr-ndr2.cast.addradio.de/ndr/ndr2/niedersachsen/mp3/128/stream.mp3",
+    url: "https://icecast.ndr.de/ndr/ndr2/niedersachsen/mp3/128/stream.mp3",
+    backup: "https://icecast.ndr.de/ndr/ndr2/hamburg/mp3/128/stream.mp3",
   },
   {
     id: "wdr4",
@@ -32,8 +32,8 @@ export const RADIO_SENDER = [
     emoji: "🎶",
     farbe: "#FFF8E1",
     rand: "#F57F17",
-    url: "https://wdr-wdr4.cast.addradio.de/wdr/wdr4/live/mp3/128/stream.mp3",
-    backup: "https://www.wdr.de/wdr4/wdr4-stream.m3u",
+    url: "https://wdr-wdr4-live.icecast.wdr.de/wdr/wdr4/live/mp3/128/stream.mp3",
+    backup: "https://wdr-1live-live.icecast.wdr.de/wdr/1live/live/mp3/128/stream.mp3",
   },
   {
     id: "hr1",
@@ -43,7 +43,7 @@ export const RADIO_SENDER = [
     farbe: "#E8F5E9",
     rand: "#388E3C",
     url: "https://dispatcher.rndfnk.com/hr/hr1/live/mp3/128/stream.mp3",
-    backup: "https://hr-hr1.cast.addradio.de/hr/hr1/live/mp3/128/stream.mp3",
+    backup: "https://dispatcher.rndfnk.com/hr/hr2/live/mp3/128/stream.mp3",
   },
   {
     id: "dlf",
@@ -56,14 +56,14 @@ export const RADIO_SENDER = [
     backup: "https://st01.sslstream.dlf.de/dlf/01/64/mp3/stream.mp3",
   },
   {
-    id: "bay1",
-    name: "Bayern 1",
+    id: "brheimat",
+    name: "BR Heimat",
     region: "Volksmusik & Heimat",
     emoji: "🏔️",
     farbe: "#F3E5F5",
     rand: "#6A1B9A",
-    url: "https://dispatcher.rndfnk.com/br/br1/live/mp3/low",
-    backup: "https://br-br1-muenchen.cast.addradio.de/br/br1/muenchen/mp3/128/stream.mp3",
+    url: "https://dispatcher.rndfnk.com/br/brheimat/live/mp3/128/stream.mp3",
+    backup: "https://dispatcher.rndfnk.com/br/br2/live/mp3/128/stream.mp3",
   },
   {
     id: "swr4",
@@ -73,7 +73,7 @@ export const RADIO_SENDER = [
     farbe: "#FFFDE7",
     rand: "#F9A825",
     url: "https://dispatcher.rndfnk.com/swr/swr4/bw/mp3/128/stream.mp3",
-    backup: "https://swr-swr4-bw.cast.addradio.de/swr/swr4/bw/mp3/128/stream.mp3",
+    backup: "https://dispatcher.rndfnk.com/swr/swr1/bw/mp3/128/stream.mp3",
   },
   {
     id: "mdrjump",
@@ -82,7 +82,7 @@ export const RADIO_SENDER = [
     emoji: "⚡",
     farbe: "#E0F2F1",
     rand: "#00796B",
-    url: "https://mdr-jump.cast.addradio.de/mdr/jump/live/mp3/128/stream.mp3",
+    url: "https://mdr-284320-0.sslcast.mdr.de/mdr/284320/0/mp3/high/stream.mp3",
     backup: "https://dispatcher.rndfnk.com/mdr/jump/live/mp3/128/stream.mp3",
   },
 ];
