@@ -270,7 +270,10 @@ export default function MusikSeite() {
   }, [audioUrl]);
 
   /* ── Favoriten filtern ───────────────────────────────────────────────── */
-  const favorisierteSender = RADIO_SENDER.filter((s) => favoriten.includes(s.id));
+  // Wenn keine Favoriten gesetzt: alle Sender zeigen (Fallback)
+  const favorisierteSender = favoriten.length > 0
+    ? RADIO_SENDER.filter((s) => favoriten.includes(s.id))
+    : RADIO_SENDER;
 
   /* ── UI ──────────────────────────────────────────────────────────────── */
   return (
@@ -317,21 +320,8 @@ export default function MusikSeite() {
             </div>
           )}
 
-          {/* Noch keine Favoriten */}
-          {favoritenGeladen && favorisierteSender.length === 0 && (
-            <div className="text-center py-14 rounded-3xl" style={{ background: "var(--farbe-hell-karte)" }}>
-              <p className="text-5xl mb-4">📻</p>
-              <p className="text-xl mb-2" style={{ color: "var(--farbe-warm-text)" }}>
-                Noch keine Lieblingssender
-              </p>
-              <p className="text-base" style={{ color: "var(--farbe-warm-text-weich)" }}>
-                Die Familie kann in ihrer App Sender als Favoriten markieren – dann erscheinen sie hier.
-              </p>
-            </div>
-          )}
-
-          {/* Favoriten als Kacheln (2 Spalten) */}
-          {favorisierteSender.length > 0 && (
+          {/* Sender als Kacheln (2 Spalten) */}
+          {favoritenGeladen && (
             <div className="grid grid-cols-2 gap-4">
               {favorisierteSender.map((sender) => {
                 const istAktiv = aktivesSender === sender.id && radioSpielt;
