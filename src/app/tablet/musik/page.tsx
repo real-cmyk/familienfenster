@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client"; // nur noch für Playlists
 
 /* ── Radio-Sender mit Backup-URLs ───────────────────────────────────────── */
 export const RADIO_SENDER = [
@@ -112,16 +112,15 @@ export default function MusikSeite() {
   const [lautstaerke, setLautstaerke] = useState(0.8);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  /* ── Favoriten aus Supabase ──────────────────────────────────────────── */
+  /* ── Favoriten über API laden (admin-client, umgeht anon-RLS) ───────── */
   useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from("radio_favoriten")
-      .select("station_id")
-      .then(({ data }) => {
-        setFavoriten((data ?? []).map((r: { station_id: string }) => r.station_id));
+    fetch("/api/radio-favoriten")
+      .then((r) => r.json())
+      .then(({ ids }) => {
+        setFavoriten(ids ?? []);
         setFavoritenGeladen(true);
-      });
+      })
+      .catch(() => setFavoritenGeladen(true));
   }, []);
 
   /* ── Playlists laden ─────────────────────────────────────────────────── */
@@ -204,12 +203,9 @@ export default function MusikSeite() {
     }, { once: true });
 
     audio.src = streamUrl;
-    audio.play().catch(() => {
-      clearTimeout(timeout);
-      setRadioFehler(`„${sender.name}" konnte nicht gestartet werden.`);
-      setRadioSpielt(false);
-      setAktivesSender(null);
-    });
+    // play() kann bei Streams sofort rejecten obwohl der Stream kurz danach läuft —
+    // daher stumm ignorieren; Timeout und error-Event decken echte Fehler ab
+    audio.play().catch(() => { /* stumm */ });
   }
 
   /* ── Playlist-Funktionen ─────────────────────────────────────────────── */
