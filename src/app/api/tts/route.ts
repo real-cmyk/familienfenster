@@ -25,11 +25,12 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "tts-1",        // Günstig ($15/1M chars vs $30 bei hd) – für Lina ausreichend
+        model: "gpt-4o-mini-tts",
         input: text.slice(0, 4096),
-        voice: "shimmer",      // Sanft, warm, weiblich – passt zu Lina
+        voice: "coral",        // Warm, weiblich, natürlich klingend
+        instructions: "Sprich warm, herzlich und geduldig – wie eine einfühlsame Freundin die mit einer älteren Dame plaudert. Sprich etwas langsamer und deutlich, mit echter Wärme in der Stimme. Keine steife Ansagerstimme – natürlich und menschlich.",
         response_format: "mp3",
-        speed: 0.9,            // Etwas langsamer für ältere Nutzer
+        speed: 0.92,
       }),
     });
 
