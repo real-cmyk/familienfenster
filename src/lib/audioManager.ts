@@ -4,17 +4,19 @@
 let aktivesAudio: HTMLAudioElement | null = null;
 
 export function registriereAudio(audio: HTMLAudioElement) {
+  // Vorherigen Stream sicherheitshalber stoppen bevor neuer registriert wird
+  if (aktivesAudio && aktivesAudio !== audio) {
+    aktivesAudio.pause();
+    aktivesAudio.src = "";
+  }
   aktivesAudio = audio;
-}
-
-export function meldeAudioAb() {
-  aktivesAudio = null;
 }
 
 export function stoppeAllesAudio() {
   if (aktivesAudio) {
     aktivesAudio.pause();
     aktivesAudio.src = "";
+    try { aktivesAudio.load(); } catch { /* ignorieren */ }
     aktivesAudio = null;
   }
 }

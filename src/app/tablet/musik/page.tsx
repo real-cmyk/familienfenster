@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client"; // nur noch für Playlists
-import { registriereAudio, meldeAudioAb } from "@/lib/audioManager";
+import { registriereAudio } from "@/lib/audioManager";
 
 /* ── Radio-Sender mit Backup-URLs ───────────────────────────────────────── */
 export const RADIO_SENDER = [
@@ -134,7 +134,8 @@ export default function MusikSeite() {
   /* ── Cleanup beim Verlassen der Seite ───────────────────────────────── */
   useEffect(() => {
     return () => {
-      meldeAudioAb();
+      // audioManager.stoppeAllesAudio() übernimmt das Stoppen über das Layout.
+      // Hier nur lokale Refs aufräumen falls der Manager die Referenz nicht mehr hat.
       if (radioRef.current) {
         radioRef.current.pause();
         radioRef.current.src = "";
