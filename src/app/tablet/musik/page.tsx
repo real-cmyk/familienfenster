@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client"; // nur noch für Playlists
+import { registriereAudio, meldeAudioAb } from "@/lib/audioManager";
 
 /* ── Radio-Sender mit Backup-URLs ───────────────────────────────────────── */
 export const RADIO_SENDER = [
@@ -133,13 +134,12 @@ export default function MusikSeite() {
   /* ── Cleanup beim Verlassen der Seite ───────────────────────────────── */
   useEffect(() => {
     return () => {
-      // Radio-Stream stoppen (new Audio() bleibt sonst im Speicher aktiv)
+      meldeAudioAb();
       if (radioRef.current) {
         radioRef.current.pause();
         radioRef.current.src = "";
         radioRef.current = null;
       }
-      // Playlist-Audio stoppen
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
@@ -181,6 +181,7 @@ export default function MusikSeite() {
     const streamUrl = versuch === 1 ? sender.url : (sender.backup ?? sender.url);
     const audio = new Audio();
     radioRef.current = audio;
+    registriereAudio(audio);
     audio.volume = lautstaerke;
     audio.preload = "none";
 
@@ -333,53 +334,51 @@ export default function MusikSeite() {
             </div>
           )}
 
-          {/* Sender als Kacheln (2 Spalten) */}
+          {/* Sender als Kacheln (4 Spalten) */}
           {favoritenGeladen && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
               {favorisierteSender.map((sender) => {
                 const istAktiv = aktivesSender === sender.id && radioSpielt;
                 return (
                   <button
                     key={sender.id}
                     onClick={() => spieleRadio(sender.id)}
-                    className="rounded-3xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95"
+                    className="rounded-2xl flex flex-col items-center justify-center gap-2 transition-transform active:scale-95"
                     style={{
                       background: istAktiv ? "var(--farbe-warm-akzent)" : sender.farbe,
                       border: `3px solid ${istAktiv ? "var(--farbe-warm-akzent)" : sender.rand}`,
-                      minHeight: "150px",
-                      padding: "20px 12px",
-                      boxShadow: istAktiv ? "0 6px 20px rgba(193,112,58,0.35)" : "none",
+                      minHeight: "120px",
+                      padding: "14px 8px",
+                      boxShadow: istAktiv ? "0 4px 16px rgba(193,112,58,0.35)" : "none",
                     }}
                   >
-                    {/* Animierte Wellen wenn aktiv */}
                     {istAktiv ? (
-                      <div className="flex gap-1 items-end" style={{ height: "36px" }}>
+                      <div className="flex gap-1 items-end" style={{ height: "28px" }}>
                         {[3,5,7,5,3,6,4].map((h, i) => (
                           <div key={i} className="rounded-full" style={{
-                            width: "7px",
+                            width: "5px",
                             background: "white",
-                            height: `${h * 4}px`,
+                            height: `${h * 3}px`,
                             animation: `linawelle ${0.4 + i * 0.07}s ease-in-out infinite alternate`,
                             animationDelay: `${i * 0.06}s`,
                           }} />
                         ))}
                       </div>
                     ) : (
-                      <span className="text-5xl">{sender.emoji}</span>
+                      <span style={{ fontSize: "2.2rem" }}>{sender.emoji}</span>
                     )}
 
                     <div className="text-center">
                       <p
-                        className="text-lg font-bold leading-tight"
-                        style={{ color: istAktiv ? "white" : "var(--farbe-warm-text)" }}
+                        className="font-bold leading-tight"
+                        style={{ color: istAktiv ? "white" : "var(--farbe-warm-text)", fontSize: "0.85rem" }}
                       >
                         {sender.name}
                       </p>
                       <p
-                        className="text-sm mt-1"
-                        style={{ color: istAktiv ? "rgba(255,255,255,0.8)" : "var(--farbe-warm-text-weich)" }}
+                        style={{ color: istAktiv ? "rgba(255,255,255,0.8)" : "var(--farbe-warm-text-weich)", fontSize: "0.72rem", marginTop: "2px" }}
                       >
-                        {istAktiv ? "Tippen zum Stoppen" : sender.region}
+                        {istAktiv ? "Stoppen" : sender.region}
                       </p>
                     </div>
                   </button>

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { aktiviereWakeLock, aktiviereKioskMode } from "@/lib/kiosk";
+import { stoppeAllesAudio } from "@/lib/audioManager";
 import HeartbeatSender from "@/components/tablet/HeartbeatSender";
 import TabletRealtime from "@/components/tablet/TabletRealtime";
 
@@ -15,6 +16,11 @@ export default function TabletLayout({ children }: { children: React.ReactNode }
     aktiviereWakeLock();
     aktiviereKioskMode();
   }, []);
+
+  // Musik stoppen sobald die Startseite aufgerufen wird
+  useEffect(() => {
+    if (istHomescreen) stoppeAllesAudio();
+  }, [istHomescreen]);
 
   return (
     <div
