@@ -30,6 +30,13 @@ export async function proxy(request: NextRequest) {
 
   const pfad = request.nextUrl.pathname;
 
+  // Root-URL direkt auf Tablet-Homescreen umleiten (kein History-Eintrag für /)
+  if (pfad === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/tablet";
+    return NextResponse.redirect(url, { status: 308 });
+  }
+
   // Nur /auth/* ist öffentlich — alle anderen Routen (inkl. /tablet) erfordern Login
   // Oma meldet sich einmalig an; die Session bleibt im Browser gespeichert
   const isAuthRoute = pfad.startsWith("/auth/");
